@@ -29,9 +29,18 @@ sonra tarayıcıda verilen adresi (ör. `http://localhost:5500`) açın.
 
 ## İnternette yayınlama / güncelleme
 
-Site şu an Cloudflare Pages'te (`danismanik.pages.dev`), proxy Cloudflare Workers'ta (`proxy/README.md`) yayında. Bu depo GitHub'a bağlıysa `main`'e her push otomatik olarak siteyi günceller. Değilse, Cloudflare Pages projesinin "Create deployment" ekranından dosyaları elle yeniden yükleyin.
+Site Cloudflare Pages'te (`danismanik.pages.dev`), proxy Cloudflare Workers'ta (`proxy/README.md`) yayında. Depo GitHub'a bağlı (`emrezdgn-sketch/kiyafet-danismani`) ama push'ların otomatik deploy tetiklemesi güvenilir çalışmadı; bu yüzden güncelleme için Wrangler CLI kullanın:
 
-Proxy kodunda (`proxy/worker.js`) değişiklik yaparsanız, Cloudflare Worker'ın "Edit code" ekranına elle yapıştırıp yeniden Deploy etmeniz gerekir (Worker'lar git entegrasyonuna bağlı değildir).
+```
+npx wrangler pages deploy . --project-name=danismanik
+```
+
+(İlk seferde `npx wrangler login` ile tarayıcıdan giriş istenir.)
+
+Proxy kodunda (`proxy/worker.js`) değişiklik yaparsanız:
+```
+npx wrangler deploy proxy/worker.js --name autumn-cell-5bba --compatibility-date 2026-01-01
+```
 
 ## Güvenlik notu
 
