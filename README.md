@@ -6,14 +6,13 @@ Canlı adres: https://danismanik.pages.dev
 
 ## Kurulum (yerel geliştirme)
 
-1. `config.example.js` dosyasını `config.js` olarak kopyalayın.
-2. Proxy zaten kurulu (`proxy/README.md`); Worker'ın adresini `config.js`'e yazın:
-   ```js
-   window.APP_CONFIG = {
-     apiProxyUrl: "https://autumn-cell-5bba.emrezdgn.workers.dev/",
-     model: "claude-sonnet-5",
-   };
-   ```
+`config.js` zaten depoda ve çalışan proxy adresiyle dolu, ekstra bir şey yapmanıza gerek yok. Farklı bir proxy kullanmak isterseniz `config.example.js`'i şablon olarak alıp `config.js`'i düzenleyin:
+```js
+window.APP_CONFIG = {
+  apiProxyUrl: "https://autumn-cell-5bba.emrezdgn.workers.dev/",
+  model: "claude-sonnet-5",
+};
+```
 
 ## Yerelde çalıştırma
 
@@ -42,7 +41,7 @@ Anahtar Worker'ın Secret ayarında saklanıyor, tarayıcıya hiç ulaşmıyor. 
 
 - `index.html` — sayfa iskeleti; Tailwind, Google Fonts, React/Babel/lucide-react için CDN bağlantıları ve import map.
 - `app.jsx` — asıl uygulama (bileşen + proxy üzerinden Anthropic API çağrısı).
-- `config.js` — proxy adresiniz (gizli bilgi içermez, ama yine de `.gitignore`'da).
-- `config.example.js` — `config.js` şablonu.
+- `config.js` — proxy adresiniz (gizli bilgi içermez, depoya commit edilir).
+- `config.example.js` — `config.js` şablonu, farklı bir proxy'ye geçmek isteyenler için.
 - `proxy/worker.js` — Cloudflare Worker proxy kodu (API anahtarını sunucu tarafında saklar).
 - `proxy/README.md` — proxy ve Pages kurulum adımları.
