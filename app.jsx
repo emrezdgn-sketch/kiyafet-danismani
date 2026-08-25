@@ -525,9 +525,9 @@ export default function OutfitStylist() {
         body: JSON.stringify({
           model: ANTHROPIC_MODEL,
           // 5 kriterin her biri için ayrı puan + gerekçe istediğimizden yanıt
-          // eskisinden daha uzun; 1000 bazen yetmeyip yarım/geçersiz JSON'a
-          // yol açıyordu. Payı büyüttük.
-          max_tokens: 1600,
+          // uzun olabiliyor; 1600 bazen yetmeyip yarım/geçersiz JSON'a yol
+          // açıyordu. Payı tekrar büyüttük.
+          max_tokens: 2400,
           // Sabit talimat metni system'e taşındı ve cache_control ile
           // işaretlendi: aynı oturumda birden fazla kombin denendiğinde,
           // 5 dakika içindeki tekrar isteklerde bu metin tam fiyattan değil
