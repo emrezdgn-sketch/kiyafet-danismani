@@ -1,5 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { createRoot } from 'react-dom/client';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Share2 } from 'lucide-react';
 
 // Renkler CSS custom property olarak tanımlı (aşağıdaki :root / @media
@@ -30,77 +29,7 @@ const SHADOW = {
   accent: '7px 7px 16px var(--shadow-ad), -5px -5px 14px var(--shadow-al)',
 };
 
-const STYLES = (
-  <style>{`
-    :root {
-      --bg: #F5F0E6;
-      --ink: #2B251E;
-      --ink-soft: #75695A;
-      --ink-faint: #A89C89;
-      --accent: #B5563D;
-      --accent-rgb: 181,86,61;
-      --success: #4C7A5E;
-      --warning: #BE8A34;
-      --danger: #C0392B;
-      --line: #E6DECF;
-      --shadow-d1: rgba(43,37,30,0.12);
-      --shadow-l1: rgba(255,255,255,0.9);
-      --shadow-d2: rgba(43,37,30,0.10);
-      --shadow-l2: rgba(255,255,255,0.85);
-      --shadow-ad: rgba(181,86,61,0.32);
-      --shadow-al: rgba(255,255,255,0.5);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1E1B17;
-        --ink: #F2EAD9;
-        --ink-soft: #B8AA96;
-        --ink-faint: #7C6F5D;
-        --accent: #E07856;
-        --accent-rgb: 224,120,86;
-        --success: #6FAE8A;
-        --warning: #D9A54B;
-        --danger: #E2695A;
-        --line: #3A342C;
-        --shadow-d1: rgba(0,0,0,0.55);
-        --shadow-l1: rgba(255,255,255,0.045);
-        --shadow-d2: rgba(0,0,0,0.5);
-        --shadow-l2: rgba(255,255,255,0.04);
-        --shadow-ad: rgba(224,120,86,0.4);
-        --shadow-al: rgba(255,255,255,0.05);
-      }
-    }
-    html, body { background: var(--bg); }
-    .font-sans { font-family: 'Plus Jakarta Sans', sans-serif; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) {
-      .spin-anim { animation: none !important; }
-      .press-btn { transition: none !important; }
-    }
-    .stylist-wrap { max-width: 540px; margin: 0 auto; }
-    .stylist-layout { display: flex; flex-direction: column; gap: 28px; }
-    .stylist-photo-col { width: 100%; }
-    .stylist-results-col { width: 100%; }
-    .stylist-photo-img { max-height: 480px; }
-    @media (min-width: 760px) {
-      .stylist-wrap { max-width: 1100px; }
-      .stylist-layout { flex-direction: row; align-items: flex-start; gap: 44px; }
-      .stylist-photo-col { width: 400px; flex-shrink: 0; position: sticky; top: 28px; }
-      .stylist-results-col { flex: 1; min-width: 0; }
-      .stylist-photo-img { max-height: 620px; }
-    }
-    .press-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease; }
-    .press-btn:hover { transform: translateY(-2px); }
-    .press-btn:active { transform: translateY(0) scale(0.99); }
-    .press-btn:disabled { transform: none; cursor: default; }
-    .press-btn:focus-visible, .press-icon:focus-visible {
-      outline: 2px solid ${C.accent}; outline-offset: 2px; border-radius: 4px;
-    }
-    .press-icon { transition: transform 0.15s ease; }
-    .press-icon:hover { transform: scale(1.08); }
-    .idea-card:hover { transform: translateY(-2px); }
-  `}</style>
-);
+// Styles moved to src/index.css (Tailwind + custom CSS)
 
 // System prompt is now server-side (proxy/worker.js) — the client only
 // sends image data + optional occasion hint.
@@ -993,10 +922,10 @@ function PhotoSlot({ photo, compact, locked }) {
 // iki akışın davranışının (hata mesajları, JSON ayrıştırma vb.) birbirinden
 // sapmasını önler.
 async function runAnalysis(safeImage, occasion) {
-  if (!APP_CONFIG.apiProxyUrl) {
-    throw new Error('Proxy adresi ayarlanmamış. config.js dosyasını config.example.js şablonuna göre doldurun.');
+  if (!API_PROXY_URL) {
+    throw new Error('Proxy adresi ayarlanmamış. .env dosyasında VITE_API_PROXY_URL tanımlayın.');
   }
-  const response = await fetch(APP_CONFIG.apiProxyUrl, {
+  const response = await fetch(API_PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -1032,7 +961,7 @@ function compareVerdict(a, b) {
 
 // Anthropic anahtarı ve model adı, kaynak koduna gömülmek yerine index.html
 // tarafından önceden yüklenen config.js dosyasından okunur (bkz. config.example.js).
-const APP_CONFIG = (typeof window !== 'undefined' && window.APP_CONFIG) || {};
+const API_PROXY_URL = import.meta.env.VITE_API_PROXY_URL || (typeof window !== 'undefined' && window.APP_CONFIG?.apiProxyUrl) || '';
 
 export default function OutfitStylist() {
   // Tek-kombin akışı hep "A" yuvasını kullanır; karşılaştırma modunda
@@ -1202,7 +1131,6 @@ export default function OutfitStylist() {
 
   return (
     <div className="min-h-screen w-full flex justify-center font-sans" style={{ background: C.bg }}>
-      {STYLES}
       <div className="w-full stylist-wrap px-5 py-10">
         {/* Header */}
         <div className="mb-9">
@@ -1494,5 +1422,3 @@ export default function OutfitStylist() {
   );
 }
 
-const rootEl = document.getElementById('root');
-createRoot(rootEl).render(<OutfitStylist />);
