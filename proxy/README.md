@@ -4,7 +4,14 @@ Bu klasördeki `worker.js`, Anthropic API anahtarınızı tarayıcıdan gizleyen
 
 ## Kod güncellemek isterseniz
 
-Artık bu Mac'te Node.js olduğu için en hızlı yol Wrangler CLI:
+Repo kökündeki `wrangler.toml`, Cloudflare'in Git entegrasyonunun Worker'ı nereden
+(`proxy/worker.js`) ve hangi ada (`autumn-cell-5bba`) deploy edeceğini bilmesi
+için var — bu dosya olmadan git push'larda otomatik build "wrangler
+config bulunamadı" diyerek başarısız oluyordu. Yani `proxy/worker.js`'e
+push yaptığınızda artık otomatik deploy oluyor; API anahtarı (Secret)
+deploy'lardan etkilenmeden Worker üzerinde kalıyor.
+
+Elle deploy etmek isterseniz Wrangler CLI:
 
 ```
 npx wrangler deploy proxy/worker.js --name autumn-cell-5bba --compatibility-date 2026-01-01
