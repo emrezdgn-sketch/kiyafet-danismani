@@ -1,18 +1,11 @@
-import { validateAndNormalize } from './validate.js';
+import { assertSafeResponse } from './validate.js';
 
 const API_PROXY_URL = import.meta.env.VITE_API_PROXY_URL || '';
 
-function extractJSON(text) {
-  const clean = text.replace(/```json|```/g, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch {
-    const match = clean.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('JSON ayrıştırılamadı');
-    return JSON.parse(match[0]);
-  }
-}
-
+// The Worker is the canonical authority for parsing, validating, and scoring
+// the model's response. This client only sends the request and defensively
+// checks the DTO it gets back is safe to render — it must not recompute or
+// correct the score itself.
 export async function runAnalysis(safeImage, occasion) {
   if (!API_PROXY_URL) {
     throw new Error('Proxy adresi ayarlanmamış. .env dosyasında VITE_API_PROXY_URL tanımlayın.');
@@ -27,13 +20,8 @@ export async function runAnalysis(safeImage, occasion) {
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error.message || 'API hatası');
-  const textBlock = (data.content || []).find((b) => b.type === 'text');
-  if (!textBlock) throw new Error('Boş yanıt');
-  if (data.stop_reason === 'max_tokens') {
-    throw new Error('Yanıt yarıda kesildi (max_tokens sınırı)');
-  }
-  const raw = extractJSON(textBlock.text);
-  return validateAndNormalize(raw);
+  assertSafeResponse(data);
+  return data;
 }
 
 export function compareVerdict(a, b) {

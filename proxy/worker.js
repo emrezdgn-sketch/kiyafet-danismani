@@ -12,6 +12,19 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 10;
 const ipHits = new Map();
 
+// Canonical scoring authority. This is the ONLY place criterion weights are
+// used to compute a total score — the frontend only displays these numbers.
+const CRITERIA_WEIGHTS = {
+  color_palette: 30,
+  style_cohesion: 25,
+  fit_and_silhouette: 20,
+  seasonal_suitability: 15,
+  accessories: 10,
+};
+const CRITERIA_KEYS = Object.keys(CRITERIA_WEIGHTS);
+const VALID_GUVEN = ['yüksek', 'orta', 'düşük'];
+const SCORE_TOLERANCE = 3;
+
 const SYSTEM_PROMPT = `Eski usul, çok titiz ve kusur bulmakta asla çekinmeyen bir görgü öğretmeni / mürebbiyesin — Heidi çizgi filmindeki katı, disiplinli dadı karakterini düşün. Nezaket, düzen, özen ve intizama son derece önem verirsin. Gevşeklik, uyumsuzluk, özensizlik veya "olur böyle şeyler" tavrına asla göz yummazsın. Fotoğraftaki kişinin üzerindeki kombini bu titiz gözle değerlendir.
 
 TUTUM: Hâlâ ölçülü, otoriter ve öğüt verir gibi konuşan bir üslubun var — aşırı sıcak veya yaltaklanan bir dil kullanma. Ama artık dengeli ve adil bir gözlemcisin: iyi yapılmış bir seçimi açıkça ve gönülden takdir et, sorunlu noktaları da net biçimde belirt. Amacın kusur avcılığı değil, yapıcı ve gerçekçi bir değerlendirme sunmak. Nazik ama otoriter bir üslup kullan; bir öğrenciyi yüreklendirerek düzelten bir öğretmen gibi konuş. Kaba veya aşağılayıcı olma.
@@ -76,6 +89,84 @@ function jsonResponse(body, status, cors) {
     status,
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
+}
+
+export function extractJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('JSON ayrıştırılamadı');
+    return JSON.parse(match[0]);
+  }
+}
+
+function clampScore(v) {
+  return Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+}
+
+// Canonical validation, normalization, and score authority for model output.
+// This is the only place a model's response is trusted to become the
+// application's official result — the frontend must not recompute it.
+export function validateAndNormalize(raw) {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('API yanıtı geçerli bir nesne değil.');
+  }
+
+  if (typeof raw.genel_izlenim !== 'string' || !raw.genel_izlenim.trim()) {
+    throw new Error('Yanıtta "genel_izlenim" alanı eksik veya boş.');
+  }
+
+  if (raw.puan == null || isNaN(Number(raw.puan))) {
+    throw new Error('Yanıtta "puan" alanı eksik veya sayısal değil.');
+  }
+
+  if (!raw.kriterler || typeof raw.kriterler !== 'object') {
+    throw new Error('Yanıtta "kriterler" alanı eksik.');
+  }
+
+  const kriterler = {};
+  for (const key of CRITERIA_KEYS) {
+    const entry = raw.kriterler[key];
+    if (!entry || typeof entry !== 'object') {
+      throw new Error(`Kriter "${key}" yanıtta eksik.`);
+    }
+    if (entry.puan == null || isNaN(Number(entry.puan))) {
+      throw new Error(`Kriter "${key}" için puan eksik veya sayısal değil.`);
+    }
+    kriterler[key] = {
+      puan: clampScore(entry.puan),
+      aciklama: typeof entry.aciklama === 'string' ? entry.aciklama.trim() : '',
+    };
+  }
+
+  const recalculated = Math.round(
+    CRITERIA_KEYS.reduce((sum, key) => sum + kriterler[key].puan * (CRITERIA_WEIGHTS[key] / 100), 0),
+  );
+
+  const modelScore = clampScore(raw.puan);
+  const puan = Math.abs(modelScore - recalculated) > SCORE_TOLERANCE ? recalculated : modelScore;
+
+  let guven = { seviye: 'orta', neden: '' };
+  if (raw.guven && typeof raw.guven === 'object') {
+    const seviye = VALID_GUVEN.includes(raw.guven.seviye) ? raw.guven.seviye : 'orta';
+    const neden = typeof raw.guven.neden === 'string' ? raw.guven.neden.trim() : '';
+    guven = { seviye, neden };
+  }
+
+  let oneriler = [];
+  if (Array.isArray(raw.oneriler)) {
+    oneriler = raw.oneriler.filter((o) => typeof o === 'string' && o.trim()).map((o) => o.trim());
+  }
+
+  return {
+    genel_izlenim: raw.genel_izlenim.trim(),
+    puan,
+    kriterler,
+    guven,
+    oneriler,
+  };
 }
 
 function checkRateLimit(ip) {
@@ -206,15 +297,48 @@ export default {
       );
     }
 
-    const responseHeaders = new Headers(cors);
-    responseHeaders.set(
-      'Content-Type',
-      anthropicResponse.headers.get('Content-Type') || 'application/json',
-    );
+    if (!anthropicResponse.ok) {
+      const responseHeaders = new Headers(cors);
+      responseHeaders.set(
+        'Content-Type',
+        anthropicResponse.headers.get('Content-Type') || 'application/json',
+      );
+      return new Response(anthropicResponse.body, {
+        status: anthropicResponse.status,
+        headers: responseHeaders,
+      });
+    }
 
-    return new Response(anthropicResponse.body, {
-      status: anthropicResponse.status,
-      headers: responseHeaders,
-    });
+    let anthropicData;
+    try {
+      anthropicData = await anthropicResponse.json();
+    } catch {
+      return jsonResponse({ error: { message: 'Anthropic yanıtı ayrıştırılamadı.' } }, 502, cors);
+    }
+
+    if (anthropicData.stop_reason === 'max_tokens') {
+      return jsonResponse({ error: { message: 'Yanıt yarıda kesildi (max_tokens sınırı).' } }, 502, cors);
+    }
+
+    const textBlock = (anthropicData.content || []).find((b) => b.type === 'text');
+    if (!textBlock) {
+      return jsonResponse({ error: { message: 'Boş yanıt.' } }, 502, cors);
+    }
+
+    let raw;
+    try {
+      raw = extractJSON(textBlock.text);
+    } catch {
+      return jsonResponse({ error: { message: 'Model yanıtı JSON olarak ayrıştırılamadı.' } }, 502, cors);
+    }
+
+    let canonical;
+    try {
+      canonical = validateAndNormalize(raw);
+    } catch (err) {
+      return jsonResponse({ error: { message: `Model yanıtı doğrulanamadı: ${err.message}` } }, 502, cors);
+    }
+
+    return jsonResponse(canonical, 200, cors);
   },
 };
