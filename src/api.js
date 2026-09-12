@@ -1,4 +1,17 @@
+import { validateAndNormalize } from './validate.js';
+
 const API_PROXY_URL = import.meta.env.VITE_API_PROXY_URL || '';
+
+function extractJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('JSON ayrıştırılamadı');
+    return JSON.parse(match[0]);
+  }
+}
 
 export async function runAnalysis(safeImage, occasion) {
   if (!API_PROXY_URL) {
@@ -19,14 +32,8 @@ export async function runAnalysis(safeImage, occasion) {
   if (data.stop_reason === 'max_tokens') {
     throw new Error('Yanıt yarıda kesildi (max_tokens sınırı)');
   }
-  const clean = textBlock.text.replace(/```json|```/g, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch {
-    const match = clean.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('JSON ayrıştırılamadı');
-    return JSON.parse(match[0]);
-  }
+  const raw = extractJSON(textBlock.text);
+  return validateAndNormalize(raw);
 }
 
 export function compareVerdict(a, b) {
