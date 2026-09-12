@@ -2,31 +2,75 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Watch } from 'lucide-react';
 
+// Renkler CSS custom property olarak tanımlı (aşağıdaki :root / @media
+// bloğunda) ki sistem karanlık moda geçtiğinde JS'te yeniden render
+// gerekmeden, tarayıcı tek başına anlık geçiş yapabilsin.
 const C = {
-  bg: '#F5F0E6',
-  ink: '#2B251E',
-  inkSoft: '#75695A',
-  inkFaint: '#A89C89',
-  accent: '#B5563D',
-  success: '#4C7A5E',
-  warning: '#BE8A34',
+  bg: 'var(--bg)',
+  ink: 'var(--ink)',
+  inkSoft: 'var(--ink-soft)',
+  inkFaint: 'var(--ink-faint)',
+  accent: 'var(--accent)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
   // Marka rengi olan accent'ten kasıtlı olarak ayrı: hata durumları
   // "kombin puanı düşük" ile karışmasın diye net bir kırmızı kullanıyor.
-  danger: '#C0392B',
-  line: '#E6DECF',
+  danger: 'var(--danger)',
+  line: 'var(--line)',
 };
 
 // Neomorfizm: kart ve sayfa AYNI zemin renginde — derinlik yalnızca çift
 // yönlü (koyu + açık) yumuşak gölgeyle oluşturuluyor, renk farkıyla değil.
+// Gölge renkleri de değişkene bağlı: karanlık modda "aydınlık" gölge çok
+// hafif bir parıltıya, "koyu" gölge ise saf siyaha yaklaşır.
 const SHADOW = {
-  raised: '9px 9px 20px rgba(43,37,30,0.12), -9px -9px 20px rgba(255,255,255,0.9)',
-  raisedSm: '5px 5px 12px rgba(43,37,30,0.10), -5px -5px 12px rgba(255,255,255,0.85)',
-  inset: 'inset 5px 5px 11px rgba(43,37,30,0.10), inset -5px -5px 11px rgba(255,255,255,0.8)',
-  accent: '7px 7px 16px rgba(181,86,61,0.32), -5px -5px 14px rgba(255,255,255,0.5)',
+  raised: '9px 9px 20px var(--shadow-d1), -9px -9px 20px var(--shadow-l1)',
+  raisedSm: '5px 5px 12px var(--shadow-d2), -5px -5px 12px var(--shadow-l2)',
+  inset: 'inset 5px 5px 11px var(--shadow-d2), inset -5px -5px 11px var(--shadow-l2)',
+  accent: '7px 7px 16px var(--shadow-ad), -5px -5px 14px var(--shadow-al)',
 };
 
 const STYLES = (
   <style>{`
+    :root {
+      --bg: #F5F0E6;
+      --ink: #2B251E;
+      --ink-soft: #75695A;
+      --ink-faint: #A89C89;
+      --accent: #B5563D;
+      --accent-rgb: 181,86,61;
+      --success: #4C7A5E;
+      --warning: #BE8A34;
+      --danger: #C0392B;
+      --line: #E6DECF;
+      --shadow-d1: rgba(43,37,30,0.12);
+      --shadow-l1: rgba(255,255,255,0.9);
+      --shadow-d2: rgba(43,37,30,0.10);
+      --shadow-l2: rgba(255,255,255,0.85);
+      --shadow-ad: rgba(181,86,61,0.32);
+      --shadow-al: rgba(255,255,255,0.5);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1E1B17;
+        --ink: #F2EAD9;
+        --ink-soft: #B8AA96;
+        --ink-faint: #7C6F5D;
+        --accent: #E07856;
+        --accent-rgb: 224,120,86;
+        --success: #6FAE8A;
+        --warning: #D9A54B;
+        --danger: #E2695A;
+        --line: #3A342C;
+        --shadow-d1: rgba(0,0,0,0.55);
+        --shadow-l1: rgba(255,255,255,0.045);
+        --shadow-d2: rgba(0,0,0,0.5);
+        --shadow-l2: rgba(255,255,255,0.04);
+        --shadow-ad: rgba(224,120,86,0.4);
+        --shadow-al: rgba(255,255,255,0.05);
+      }
+    }
+    html, body { background: var(--bg); }
     .font-sans { font-family: 'Plus Jakarta Sans', sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) {
@@ -122,6 +166,55 @@ const ACCESSORY_IDEAS = [
   { label: 'Kolye', hint: 'İnce bir zincir yaka boşluğunu tamamlar', Icon: Gem },
   { label: 'Saat', hint: 'Bilekte sade bir kol saati bütünlüğü güçlendirir', Icon: Watch },
 ];
+
+// Geçmiş değerlendirmeler yalnızca bu cihazda (localStorage) saklanır,
+// hiçbir yere gönderilmez; kullanıcı zaman içindeki puan değişimini görebilsin
+// diye küçük bir kare önizleme + puan tutulur, tam çözünürlüklü görsel değil.
+const HISTORY_KEY = 'nasilOlmusumHistory:v1';
+const HISTORY_LIMIT = 12;
+const THUMB_SIZE = 72;
+
+function loadHistory() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(list) {
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+  } catch {
+    // localStorage dolu ya da erişilemez olabilir (gizli sekme vb.);
+    // sessizce yut — geçmiş bu oturumda kalıcı olmaz ama uygulama çalışır.
+  }
+}
+
+function makeThumbnail(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const side = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - side) / 2;
+        const sy = (img.naturalHeight - side) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = THUMB_SIZE;
+        canvas.height = THUMB_SIZE;
+        canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, THUMB_SIZE, THUMB_SIZE);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
 
 function fileToImage(file) {
   return new Promise((resolve, reject) => {
@@ -302,10 +395,13 @@ function ConfidenceBadge({ guven }) {
         <div
           className="font-sans"
           style={{
+            // Kasıtlı olarak sabit renkler: tema koyu moda geçse bile bu
+            // ipucu her zaman koyu zemin + krem yazı olarak kalır — C.ink
+            // karanlık modda krem rengine döndüğü için buraya bağlanamaz.
             position: 'absolute', top: '100%', left: 0, marginTop: 8, width: 230, zIndex: 20,
-            background: C.ink, color: '#F5F0E6', fontSize: 12, fontWeight: 400, lineHeight: 1.5,
+            background: '#2B251E', color: '#F5F0E6', fontSize: 12, fontWeight: 400, lineHeight: 1.5,
             padding: '10px 12px', borderRadius: 10,
-            boxShadow: '4px 8px 20px rgba(43,37,30,0.35)',
+            boxShadow: '4px 8px 20px rgba(0,0,0,0.35)',
           }}
         >
           {tooltip}
@@ -354,6 +450,43 @@ function AccessoryIdeaCard({ label, hint, Icon }) {
   );
 }
 
+function HistoryStrip({ history, onClear }) {
+  if (!history.length) return null;
+  return (
+    <div className="mb-9">
+      <div className="flex items-center justify-between mb-3">
+        <SectionLabel>Geçmiş Kombinlerin</SectionLabel>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Geçmiş kombin kayıtlarını silmek istediğine emin misin?')) onClear();
+          }}
+          className="font-sans font-semibold press-icon"
+          style={{ fontSize: 11.5, color: C.inkFaint, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          Temizle
+        </button>
+      </div>
+      <div className="flex gap-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
+        {history.map((h) => {
+          const tier = scoreTier(h.score);
+          return (
+            <div key={h.id} className="flex flex-col items-center gap-1.5 shrink-0" style={{ width: 60 }} title={h.blurb || ''}>
+              <div className="rounded-2xl overflow-hidden" style={{ width: 52, height: 52, background: C.line, boxShadow: SHADOW.raisedSm }}>
+                {h.thumb && <img src={h.thumb} alt="" className="w-full h-full object-cover" />}
+              </div>
+              <span className="font-sans font-bold" style={{ fontSize: 11, color: tier.color }}>{h.score}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="font-sans" style={{ fontSize: 10.5, color: C.inkFaint, marginTop: 8 }}>
+        Sadece bu cihazda, tarayıcında saklanır.
+      </p>
+    </div>
+  );
+}
+
 const DEFAULT_BLUR_CENTER_X = 0.5;
 const DEFAULT_BLUR_CENTER_Y = 0.16;
 const DEFAULT_BLUR_RADIUS = 0.18;
@@ -376,6 +509,7 @@ export default function OutfitStylist() {
   const [status, setStatus] = useState('idle');
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [history, setHistory] = useState(() => loadHistory());
   const galleryRef = useRef(null);
   const cameraRef = useRef(null);
   const photoRef = useRef(null);
@@ -527,6 +661,27 @@ export default function OutfitStylist() {
     activeHandleRef.current = null;
   }, []);
 
+  // Fare/dokunma olmadan da (klavye ile) tutamaçlar kullanılabilsin diye:
+  // odaklanmış tutamaç üzerinde ok tuşları merkezi taşır ya da yarıçapı
+  // değiştirir. Shift basılıyken adım büyür (hızlı kaba ayar için).
+  const onHandleKeyDown = useCallback((handle) => (e) => {
+    const step = e.shiftKey ? 0.05 : 0.01;
+    if (handle === 'move') {
+      if (e.key === 'ArrowLeft') setBlurCenterX((x) => Math.max(0, x - step));
+      else if (e.key === 'ArrowRight') setBlurCenterX((x) => Math.min(1, x + step));
+      else if (e.key === 'ArrowUp') setBlurCenterY((y) => Math.max(0, y - step));
+      else if (e.key === 'ArrowDown') setBlurCenterY((y) => Math.min(1, y + step));
+      else return;
+    } else {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        setBlurRadius((r) => Math.max(MIN_BLUR_RADIUS, r - step));
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        setBlurRadius((r) => Math.min(MAX_BLUR_RADIUS, r + step));
+      } else return;
+    }
+    e.preventDefault();
+  }, []);
+
   const analyze = useCallback(async () => {
     if (!safeImage) return;
     if (!APP_CONFIG.apiProxyUrl) {
@@ -587,6 +742,19 @@ export default function OutfitStylist() {
       }
       setResult(parsed);
       setStatus('done');
+      makeThumbnail(safeImage.dataUrl).then((thumb) => {
+        const entry = {
+          id: `${Date.now()}`,
+          score: Math.max(0, Math.min(100, Number(parsed.puan) || 0)),
+          blurb: parsed.genel_izlenim || '',
+          thumb,
+        };
+        setHistory((prev) => {
+          const next = [entry, ...prev].slice(0, HISTORY_LIMIT);
+          saveHistory(next);
+          return next;
+        });
+      });
     } catch (err) {
       console.error('Kombin analizi hatası:', err);
       setErrorMsg(`Kombinini değerlendirirken bir sorun oldu: ${err.message}`);
@@ -622,6 +790,11 @@ export default function OutfitStylist() {
     setErrorMsg('');
   };
 
+  const clearHistory = () => {
+    setHistory([]);
+    saveHistory([]);
+  };
+
   return (
     <div className="min-h-screen w-full flex justify-center font-sans" style={{ background: C.bg }}>
       {STYLES}
@@ -638,6 +811,8 @@ export default function OutfitStylist() {
             Bir fotoğraf yükle; stil, renk uyumu ve mevsim uygunluğunu değerlendirip alternatif öneriler sunayım.
           </p>
         </div>
+
+        {!rawImage && <HistoryStrip history={history} onClear={clearHistory} />}
 
         {/* Upload zone */}
         {!rawImage && (
@@ -745,13 +920,17 @@ export default function OutfitStylist() {
                   aspectRatio: '1',
                   transform: 'translate(-50%, -50%)',
                   borderRadius: '50%',
-                  background: 'rgba(181,86,61,0.10)',
+                  background: 'rgba(var(--accent-rgb), 0.10)',
                   border: `2px dashed ${C.accent}`,
                 }}
               />
-              {/* Merkez tutamacı — tutup taşımak için */}
+              {/* Merkez tutamacı — tutup taşımak için (klavyeyle de: odaklan + ok tuşları) */}
               <div
-                className="absolute flex items-center justify-center"
+                role="slider"
+                tabIndex={0}
+                aria-label="Bulanıklaştırma alanını taşı"
+                aria-valuetext={`Yatay %${Math.round(blurCenterX * 100)}, dikey %${Math.round(blurCenterY * 100)}`}
+                className="absolute flex items-center justify-center press-icon"
                 style={{
                   left: `calc(12px + ${blurCenterX} * (100% - 24px))`,
                   top: `calc(12px + ${blurCenterY} * (100% - 24px))`,
@@ -761,6 +940,7 @@ export default function OutfitStylist() {
                 }}
                 onMouseDown={onHandleDragStart('move')}
                 onTouchStart={onHandleDragStart('move')}
+                onKeyDown={onHandleKeyDown('move')}
               >
                 <div
                   style={{
@@ -769,9 +949,13 @@ export default function OutfitStylist() {
                   }}
                 />
               </div>
-              {/* Kenar tutamacı — sürükleyip yarıçapı değiştirmek için */}
+              {/* Kenar tutamacı — sürükleyip yarıçapı değiştirmek için (klavyeyle de) */}
               <div
-                className="absolute flex items-center justify-center cursor-ew-resize"
+                role="slider"
+                tabIndex={0}
+                aria-label="Bulanıklaştırma alanının boyutu"
+                aria-valuetext={`Yarıçap %${Math.round(blurRadius * 100)}`}
+                className="absolute flex items-center justify-center cursor-ew-resize press-icon"
                 style={{
                   left: `calc(12px + ${blurCenterX + blurRadius} * (100% - 24px))`,
                   top: `calc(12px + ${blurCenterY} * (100% - 24px))`,
@@ -780,6 +964,7 @@ export default function OutfitStylist() {
                 }}
                 onMouseDown={onHandleDragStart('resize')}
                 onTouchStart={onHandleDragStart('resize')}
+                onKeyDown={onHandleKeyDown('resize')}
               >
                 <div
                   style={{
