@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Watch, Share2 } from 'lucide-react';
+import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Share2 } from 'lucide-react';
 
 // Renkler CSS custom property olarak tanımlı (aşağıdaki :root / @media
 // bloğunda) ki sistem karanlık moda geçtiğinde JS'te yeniden render
@@ -157,14 +157,6 @@ const CRITERIA = [
   { key: 'fit_and_silhouette', label: 'Silüet ve Oran', weight: 20, Icon: Ruler },
   { key: 'seasonal_suitability', label: 'Mevsim Uyumu', weight: 15, Icon: Sun },
   { key: 'accessories', label: 'Aksesuar Detayları', weight: 10, Icon: Gem },
-];
-
-// Sol sütundaki statik aksesuar fikri kartları — kullanıcının dolabında
-// gerçekte ne olduğunu bilmediğimiz için kişiselleştirilmiş bir öneri değil,
-// AKSESUAR KURALI'nın işaret ettiği genel kategorilere dair nazik bir hatırlatma.
-const ACCESSORY_IDEAS = [
-  { label: 'Kolye', hint: 'İnce bir zincir yaka boşluğunu tamamlar', Icon: Gem },
-  { label: 'Saat', hint: 'Bilekte sade bir kol saati bütünlüğü güçlendirir', Icon: Watch },
 ];
 
 // Geçmiş değerlendirmeler yalnızca bu cihazda (localStorage) saklanır,
@@ -575,24 +567,6 @@ function SectionLabel({ children }) {
   );
 }
 
-function AccessoryIdeaCard({ label, hint, Icon }) {
-  return (
-    <div
-      className="idea-card flex-1 flex flex-col items-center text-center gap-2 rounded-2xl"
-      style={{ background: C.bg, boxShadow: SHADOW.raisedSm, padding: '16px 10px', transition: 'transform 0.15s ease' }}
-    >
-      <div
-        className="flex items-center justify-center rounded-full"
-        style={{ width: 38, height: 38, background: C.bg, boxShadow: SHADOW.inset, color: C.accent }}
-      >
-        <Icon size={17} strokeWidth={1.8} />
-      </div>
-      <span className="font-sans font-semibold" style={{ fontSize: 12.5, color: C.ink }}>{label}</span>
-      <span className="font-sans" style={{ fontSize: 10.5, color: C.inkFaint, lineHeight: 1.4 }}>{hint}</span>
-    </div>
-  );
-}
-
 function HistoryStrip({ history, onClear }) {
   if (!history.length) return null;
   return (
@@ -863,7 +837,7 @@ function OccasionPicker({ occasion, onChange }) {
 // akışında ve karşılaştırma modunun iki yuvasında (A/B) aynen kullanılır;
 // `compact` karşılaştırma modunun dar iki-sütun düzeni için daha küçük
 // bir görünüm üretir.
-function PhotoSlot({ photo, compact }) {
+function PhotoSlot({ photo, compact, locked }) {
   const galleryRef = useRef(null);
   const cameraRef = useRef(null);
 
@@ -948,12 +922,12 @@ function PhotoSlot({ photo, compact }) {
       <div
         ref={photo.photoRef}
         className={compact ? 'relative overflow-hidden select-none rounded-3xl mb-3' : 'relative overflow-hidden select-none rounded-3xl mb-5'}
-        style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 12, touchAction: photo.faceBlurEnabled ? 'none' : 'auto' }}
-        onMouseMove={photo.faceBlurEnabled ? photo.onHandleDragMove : undefined}
-        onMouseUp={photo.faceBlurEnabled ? photo.onHandleDragEnd : undefined}
-        onMouseLeave={photo.faceBlurEnabled ? photo.onHandleDragEnd : undefined}
-        onTouchMove={photo.faceBlurEnabled ? photo.onHandleDragMove : undefined}
-        onTouchEnd={photo.faceBlurEnabled ? photo.onHandleDragEnd : undefined}
+        style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 12, touchAction: (photo.faceBlurEnabled && !locked) ? 'none' : 'auto' }}
+        onMouseMove={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragMove : undefined}
+        onMouseUp={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
+        onMouseLeave={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
+        onTouchMove={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragMove : undefined}
+        onTouchEnd={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
       >
         <img
           src={(photo.safeImage || photo.rawImage).dataUrl}
@@ -962,7 +936,7 @@ function PhotoSlot({ photo, compact }) {
           style={{ borderRadius: 18, opacity: photo.blurring ? 0.6 : 1, maxHeight: compact ? 320 : undefined }}
           draggable={false}
         />
-        {photo.faceBlurEnabled && (
+        {photo.faceBlurEnabled && !locked && (
           <>
             {/* Bulanıklaştırılan daireyi görünür kılan gölge — width %
                 + aspect-ratio:1 + translate(-50%,-50%) ile fotoğrafın
@@ -1031,25 +1005,29 @@ function PhotoSlot({ photo, compact }) {
             </div>
           </>
         )}
-        <button
-          onClick={photo.reset}
-          className="press-icon press-btn absolute flex items-center justify-center rounded-full"
-          style={{ top: compact ? 14 : 24, right: compact ? 14 : 24, width: 32, height: 32, background: C.bg, color: C.ink, boxShadow: SHADOW.raisedSm }}
-          aria-label="Fotoğrafı kaldır"
-        >
-          <X size={15} />
-        </button>
+        {!locked && (
+          <button
+            onClick={photo.reset}
+            className="press-icon press-btn absolute flex items-center justify-center rounded-full"
+            style={{ top: compact ? 14 : 24, right: compact ? 14 : 24, width: 32, height: 32, background: C.bg, color: C.ink, boxShadow: SHADOW.raisedSm }}
+            aria-label="Fotoğrafı kaldır"
+          >
+            <X size={15} />
+          </button>
+        )}
       </div>
 
-      <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans'} style={{ fontSize: compact ? 12 : 13, color: C.inkSoft, fontWeight: 500 }}>
-        <input
-          type="checkbox"
-          checked={photo.faceBlurEnabled}
-          onChange={(e) => photo.setFaceBlurEnabled(e.target.checked)}
-          style={{ accentColor: C.accent, width: 16, height: 16 }}
-        />
-        Yüzümü bulanıklaştır {!compact && <span style={{ color: C.inkFaint, fontWeight: 400 }}>(ortadan taşı, kenardan boyutlandır)</span>}
-      </label>
+      {!locked && (
+        <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans'} style={{ fontSize: compact ? 12 : 13, color: C.inkSoft, fontWeight: 500 }}>
+          <input
+            type="checkbox"
+            checked={photo.faceBlurEnabled}
+            onChange={(e) => photo.setFaceBlurEnabled(e.target.checked)}
+            style={{ accentColor: C.accent, width: 16, height: 16 }}
+          />
+          Yüzümü bulanıklaştır {!compact && <span style={{ color: C.inkFaint, fontWeight: 400 }}>(ortadan taşı, kenardan boyutlandır)</span>}
+        </label>
+      )}
       {photo.loadError && <ErrorBanner message={photo.loadError} />}
     </div>
   );
@@ -1355,7 +1333,7 @@ export default function OutfitStylist() {
           ) : (
             <div className="stylist-layout">
               <div className="stylist-photo-col">
-                <PhotoSlot photo={photoA} />
+                <PhotoSlot photo={photoA} locked={status === 'done'} />
 
                 {status !== 'done' && <OccasionPicker occasion={occasion} onChange={setOccasion} />}
 
@@ -1387,19 +1365,6 @@ export default function OutfitStylist() {
                 )}
 
                 {status === 'error' && <ErrorBanner message={errorMsg} />}
-
-                {/* Aksesuar fikirleri — değerlendirme bitmeden gösterilmesinin bir
-                    anlamı yok; sonuçla birlikte, sol sütunda sonuca eşlik ederek çıkar. */}
-                {status === 'done' && result && (
-                  <div className="flex flex-col gap-3">
-                    <SectionLabel>Aksesuar Fikirleri</SectionLabel>
-                    <div className="flex gap-3">
-                      {ACCESSORY_IDEAS.map((a) => (
-                        <AccessoryIdeaCard key={a.label} label={a.label} hint={a.hint} Icon={a.Icon} />
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Results */}
@@ -1481,16 +1446,18 @@ export default function OutfitStylist() {
 
         {mode === 'compare' && (
           <div>
-            <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div>
-                <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin A</p>
-                <PhotoSlot photo={photoA} compact />
+            {compareStatus !== 'done' && (
+              <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div>
+                  <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin A</p>
+                  <PhotoSlot photo={photoA} compact />
+                </div>
+                <div>
+                  <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin B</p>
+                  <PhotoSlot photo={photoB} compact />
+                </div>
               </div>
-              <div>
-                <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin B</p>
-                <PhotoSlot photo={photoB} compact />
-              </div>
-            </div>
+            )}
 
             {compareStatus !== 'done' && (photoA.rawImage || photoB.rawImage) && (
               <div className="mt-6">
