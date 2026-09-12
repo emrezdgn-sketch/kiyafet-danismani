@@ -10,6 +10,9 @@ const C = {
   accent: '#B5563D',
   success: '#4C7A5E',
   warning: '#BE8A34',
+  // Marka rengi olan accent'ten kasıtlı olarak ayrı: hata durumları
+  // "kombin puanı düşük" ile karışmasın diye net bir kırmızı kullanıyor.
+  danger: '#C0392B',
   line: '#E6DECF',
 };
 
@@ -312,6 +315,19 @@ function ConfidenceBadge({ guven }) {
   );
 }
 
+function ErrorBanner({ message }) {
+  if (!message) return null;
+  return (
+    <div
+      className="font-sans mb-8 px-4 py-3 rounded-2xl"
+      style={{ fontSize: 13.5, color: C.danger, background: C.bg, boxShadow: SHADOW.inset, fontWeight: 500 }}
+      role="alert"
+    >
+      {message}
+    </div>
+  );
+}
+
 function SectionLabel({ children }) {
   return (
     <div className="font-sans font-bold uppercase" style={{ fontSize: 12.5, letterSpacing: '0.08em', color: C.ink }}>
@@ -363,6 +379,7 @@ export default function OutfitStylist() {
   const galleryRef = useRef(null);
   const cameraRef = useRef(null);
   const photoRef = useRef(null);
+  const resultsRef = useRef(null);
   const activeHandleRef = useRef(null); // 'move' | 'resize' | null
   const dragStartRef = useRef({ pointerX: 0, pointerY: 0, centerX: 0, centerY: 0 });
   const blurCenterXRef = useRef(DEFAULT_BLUR_CENTER_X);
@@ -374,7 +391,12 @@ export default function OutfitStylist() {
   useEffect(() => { blurRadiusRef.current = blurRadius; }, [blurRadius]);
 
   const loadFile = useCallback(async (file) => {
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Bu bir resim dosyası değil. Lütfen JPEG, PNG veya HEIC formatında bir fotoğraf seçin.');
+      setStatus('error');
+      return;
+    }
     try {
       const img = await fileToImage(file);
       setRawImage(img);
@@ -386,7 +408,8 @@ export default function OutfitStylist() {
       setStatus('idle');
       setErrorMsg('');
     } catch {
-      setErrorMsg('Fotoğraf yüklenemedi. Tekrar dener misin?');
+      setErrorMsg('Fotoğraf yüklenemedi. Farklı bir fotoğrafla tekrar dener misin?');
+      setStatus('error');
     }
   }, []);
 
@@ -571,6 +594,14 @@ export default function OutfitStylist() {
     }
   }, [safeImage]);
 
+  // Sonuç geldiğinde, özellikle mobilde skor kartı ekranın dışında kalabiliyor;
+  // kullanıcı "tıklama işe yaradı mı?" diye tereddüt etmesin diye sonuca kaydır.
+  useEffect(() => {
+    if (status === 'done' && result && resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [status, result]);
+
   // Bölgenin dışına bırakılan bir dosya olursa tarayıcı sekmeyi o dosyayla
   // değiştirmeye çalışır; bunu tüm sayfada engelliyoruz.
   useEffect(() => {
@@ -675,6 +706,8 @@ export default function OutfitStylist() {
             </p>
           </div>
         )}
+
+        {!rawImage && status === 'error' && <ErrorBanner message={errorMsg} />}
 
         {/* Fotoğraf + sonuçlar: geniş ekranda yan yana, dar ekranda alt alta */}
         {rawImage && (
@@ -804,14 +837,7 @@ export default function OutfitStylist() {
           </button>
         )}
 
-        {status === 'error' && (
-          <div
-            className="font-sans mb-8 px-4 py-3 rounded-2xl"
-            style={{ fontSize: 13.5, color: C.accent, background: C.bg, boxShadow: SHADOW.inset, fontWeight: 500 }}
-          >
-            {errorMsg}
-          </div>
-        )}
+        {status === 'error' && <ErrorBanner message={errorMsg} />}
 
         {/* Aksesuar fikirleri — değerlendirme bitmeden gösterilmesinin bir
             anlamı yok; sonuçla birlikte, sol sütunda sonuca eşlik ederek çıkar. */}
@@ -829,7 +855,7 @@ export default function OutfitStylist() {
 
         {/* Results */}
         {status === 'done' && result && (
-          <div className="stylist-results-col">
+          <div className="stylist-results-col" ref={resultsRef}>
           <div className="flex flex-col gap-8">
             <div
               className="flex items-start gap-5 rounded-3xl"
