@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Watch } from 'lucide-react';
+import { Camera, Upload, RefreshCw, X, ChevronRight, Palette, Shirt, Ruler, Sun, Gem, Watch, Share2 } from 'lucide-react';
 
 // Renkler CSS custom property olarak tanımlı (aşağıdaki :root / @media
 // bloğunda) ki sistem karanlık moda geçtiğinde JS'te yeniden render
@@ -293,6 +293,149 @@ function scoreTier(p) {
 // Dairenin çevresi 251 (2πr, r=40) birim.
 const RING_CIRCUMFERENCE = 251;
 
+// Paylaşım kartı sabit renkler kullanır (CSS değişkeni değil): canvas
+// bağlamı `var(--accent)` gibi ifadeleri çözemez, ayrıca kart Instagram/
+// WhatsApp gibi harici yerlerde açılacağı için görüntüleyenin cihaz temasından
+// bağımsız, her zaman aynı marka görünümünde olmalı.
+const SHARE_PALETTE = {
+  bg: '#F5F0E6', ink: '#2B251E', inkSoft: '#75695A', inkFaint: '#A89C89',
+  accent: '#B5563D', success: '#4C7A5E', warning: '#BE8A34', line: '#E6DECF',
+};
+function shareTierColor(p) {
+  if (p <= 40) return SHARE_PALETTE.accent;
+  if (p <= 80) return SHARE_PALETTE.warning;
+  return SHARE_PALETTE.success;
+}
+
+function drawCoverImage(ctx, img, iw, ih, dx, dy, dw, dh) {
+  const ir = iw / ih;
+  const dr = dw / dh;
+  let sx, sy, sw, sh;
+  if (ir > dr) { sh = ih; sw = sh * dr; sx = (iw - sw) / 2; sy = 0; }
+  else { sw = iw; sh = sw / dr; sx = 0; sy = (ih - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function wrapLines(ctx, text, maxWidth, maxLines) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length > maxLines) {
+    const truncated = lines.slice(0, maxLines);
+    let last = truncated[maxLines - 1];
+    while (ctx.measureText(`${last}…`).width > maxWidth && last.length > 1) {
+      last = last.slice(0, -1);
+    }
+    truncated[maxLines - 1] = `${last.replace(/\s+$/, '')}…`;
+    return truncated;
+  }
+  return lines;
+}
+
+const SHARE_CARD_W = 1080;
+const SHARE_CARD_H = 1350;
+const SHARE_PHOTO_H = 760;
+
+function drawShareCard(ctx, img, iw, ih, result) {
+  ctx.fillStyle = SHARE_PALETTE.bg;
+  ctx.fillRect(0, 0, SHARE_CARD_W, SHARE_CARD_H);
+  drawCoverImage(ctx, img, iw, ih, 0, 0, SHARE_CARD_W, SHARE_PHOTO_H);
+
+  const p = Math.max(0, Math.min(100, Number(result.puan) || 0));
+  const tColor = shareTierColor(p);
+  const tLabel = scoreTier(p).label.toLocaleUpperCase('tr-TR');
+
+  const badgeR = 92;
+  const badgeCx = SHARE_CARD_W - 140, badgeCy = SHARE_PHOTO_H;
+  ctx.save();
+  ctx.shadowColor = 'rgba(43,37,30,0.35)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 8;
+  ctx.beginPath();
+  ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+  ctx.fillStyle = SHARE_PALETTE.bg;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = SHARE_PALETTE.line;
+  ctx.beginPath();
+  ctx.arc(badgeCx, badgeCy, badgeR - 18, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = tColor;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(badgeCx, badgeCy, badgeR - 18, -Math.PI / 2, -Math.PI / 2 + (p / 100) * Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = SHARE_PALETTE.ink;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 56px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(String(p), badgeCx, badgeCy - 6);
+  ctx.fillStyle = SHARE_PALETTE.inkFaint;
+  ctx.font = '600 20px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('/100', badgeCx, badgeCy + 30);
+
+  const padX = 64;
+  let y = SHARE_PHOTO_H + 90;
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = SHARE_PALETTE.accent;
+  ctx.font = '800 26px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('NASIL OLMUŞUM AI', padX, y);
+
+  y += 60;
+  ctx.fillStyle = tColor;
+  ctx.font = '700 24px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(tLabel, padX, y);
+
+  y += 56;
+  ctx.fillStyle = SHARE_PALETTE.ink;
+  ctx.font = '500 38px "Plus Jakarta Sans", sans-serif';
+  const lines = wrapLines(ctx, result.genel_izlenim || '', SHARE_CARD_W - padX * 2, 4);
+  const lineHeight = 50;
+  lines.forEach((line, i) => ctx.fillText(line, padX, y + i * lineHeight));
+
+  ctx.fillStyle = SHARE_PALETTE.inkFaint;
+  ctx.font = '600 22px "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('danismanik.pages.dev', padX, SHARE_CARD_H - 48);
+}
+
+function buildShareCardBlob(imgDataUrl, result) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        const canvas = document.createElement('canvas');
+        canvas.width = SHARE_CARD_W;
+        canvas.height = SHARE_CARD_H;
+        const ctx = canvas.getContext('2d');
+        drawShareCard(ctx, img, img.naturalWidth, img.naturalHeight, result);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob); else reject(new Error('Kart oluşturulamadı'));
+        }, 'image/png');
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = () => reject(new Error('Görsel yüklenemedi'));
+    img.src = imgDataUrl;
+  });
+}
+
 function ScoreHoop({ puan }) {
   const p = Math.max(0, Math.min(100, Number(puan) || 0));
   const tier = scoreTier(p);
@@ -510,6 +653,7 @@ export default function OutfitStylist() {
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [history, setHistory] = useState(() => loadHistory());
+  const [sharing, setSharing] = useState(false);
   const galleryRef = useRef(null);
   const cameraRef = useRef(null);
   const photoRef = useRef(null);
@@ -794,6 +938,42 @@ export default function OutfitStylist() {
     setHistory([]);
     saveHistory([]);
   };
+
+  const shareResult = useCallback(async () => {
+    if (!result || !safeImage || sharing) return;
+    setSharing(true);
+    try {
+      const blob = await buildShareCardBlob(safeImage.dataUrl, result);
+      const file = new File([blob], 'nasil-olmusum.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Nasıl Olmuşum AI',
+          text: `Kombinim ${Math.round(result.puan)}/100 aldı.`,
+        });
+      } else {
+        // Web Share API'yi (özellikle dosyalarla) desteklemeyen tarayıcılarda
+        // (çoğu masaüstü tarayıcı) karta indirme bağlantısı olarak düş.
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'nasil-olmusum.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+      }
+    } catch (err) {
+      // Kullanıcı paylaşım sayfasını iptal ettiğinde de AbortError fırlar —
+      // bu bir hata değil, sessizce yut.
+      if (err && err.name !== 'AbortError') {
+        setErrorMsg('Paylaşım kartı oluşturulamadı. Tekrar dener misin?');
+        setStatus('error');
+      }
+    } finally {
+      setSharing(false);
+    }
+  }, [result, safeImage, sharing]);
 
   return (
     <div className="min-h-screen w-full flex justify-center font-sans" style={{ background: C.bg }}>
@@ -1086,6 +1266,20 @@ export default function OutfitStylist() {
                 ))}
               </div>
             </div>
+
+            <button
+              onClick={shareResult}
+              disabled={sharing}
+              className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
+              style={{
+                fontSize: 14.5, color: '#FFFFFF',
+                background: sharing ? C.inkFaint : C.accent,
+                boxShadow: sharing ? SHADOW.inset : SHADOW.accent,
+                padding: '15px 16px',
+              }}
+            >
+              <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Sonucu Paylaş'}
+            </button>
 
             <button
               onClick={reset}
