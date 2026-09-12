@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronRight, RefreshCw, Share2 } from 'lucide-react';
-import { C, SHADOW, CRITERIA, HISTORY_LIMIT } from './constants.js';
+import { C, RADIUS, BUTTON, CRITERIA, HISTORY_LIMIT } from './constants.js';
 import { runAnalysis, compareVerdict } from './api.js';
 import { loadHistory, saveHistory, makeThumbnail } from './history.js';
 import { buildShareCardBlob } from './share.js';
@@ -15,7 +15,7 @@ import { PhotoSlot } from './components/PhotoSlot.jsx';
 
 function SectionLabel({ children }) {
   return (
-    <div className="font-sans font-bold uppercase" style={{ fontSize: 12.5, letterSpacing: '0.08em', color: C.ink }}>
+    <div className="font-sans font-bold uppercase" style={{ fontSize: 12, letterSpacing: '0.08em', color: C.textMuted }}>
       {children}
     </div>
   );
@@ -175,29 +175,29 @@ export default function OutfitStylist() {
     <div className="min-h-screen w-full flex justify-center font-sans" style={{ background: C.bg }}>
       <div className="w-full stylist-wrap px-5 py-10">
         {/* Header */}
-        <div className="mb-9">
-          <div className="font-sans font-bold uppercase" style={{ fontSize: 12, letterSpacing: '0.1em', color: C.accent }}>
+        <div className="mb-10">
+          <div className="font-sans font-bold uppercase" style={{ fontSize: 11.5, letterSpacing: '0.12em', color: C.accent }}>
             Moda ve Stil Analizörü
           </div>
-          <h1 className="font-sans" style={{ fontSize: 34, fontWeight: 800, color: C.ink, marginTop: 6, letterSpacing: '-0.01em' }}>
+          <h1 className="font-display" style={{ fontSize: 36, fontWeight: 600, color: C.textPrimary, marginTop: 8, letterSpacing: '-0.01em' }}>
             Nasıl Olmuşum AI
           </h1>
-          <p className="font-sans" style={{ fontSize: 15, color: C.inkSoft, marginTop: 8, lineHeight: 1.55 }}>
+          <p className="font-sans" style={{ fontSize: 15, color: C.textSecondary, marginTop: 10, lineHeight: 1.55 }}>
             Bir fotoğraf yükle; stil, renk uyumu ve mevsim uygunluğunu değerlendirip alternatif öneriler sunayım.
           </p>
         </div>
 
         {noPhotoYet && (
-          <div className="flex gap-2 mb-7">
+          <div className="flex gap-2 mb-8">
             <button
               type="button"
               onClick={() => switchMode('single')}
-              className="press-btn font-sans font-semibold rounded-2xl"
+              className="press-btn font-sans font-semibold"
               style={{
-                fontSize: 13, padding: '10px 16px',
-                color: mode === 'single' ? '#FFFFFF' : C.ink,
-                background: mode === 'single' ? C.accent : C.bg,
-                boxShadow: mode === 'single' ? SHADOW.accent : SHADOW.raisedSm,
+                fontSize: 13, padding: '10px 16px', borderRadius: RADIUS.medium,
+                color: mode === 'single' ? C.onAccent : C.textPrimary,
+                background: mode === 'single' ? C.accent : 'transparent',
+                border: `1.5px solid ${mode === 'single' ? C.accent : C.borderSubtle}`,
               }}
             >
               Tek Kombin
@@ -205,12 +205,12 @@ export default function OutfitStylist() {
             <button
               type="button"
               onClick={() => switchMode('compare')}
-              className="press-btn font-sans font-semibold rounded-2xl"
+              className="press-btn font-sans font-semibold"
               style={{
-                fontSize: 13, padding: '10px 16px',
-                color: mode === 'compare' ? '#FFFFFF' : C.ink,
-                background: mode === 'compare' ? C.accent : C.bg,
-                boxShadow: mode === 'compare' ? SHADOW.accent : SHADOW.raisedSm,
+                fontSize: 13, padding: '10px 16px', borderRadius: RADIUS.medium,
+                color: mode === 'compare' ? C.onAccent : C.textPrimary,
+                background: mode === 'compare' ? C.accent : 'transparent',
+                border: `1.5px solid ${mode === 'compare' ? C.accent : C.borderSubtle}`,
               }}
             >
               İki Kombini Karşılaştır
@@ -237,12 +237,10 @@ export default function OutfitStylist() {
                   <button
                     onClick={analyze}
                     disabled={status === 'loading' || photoA.blurring || !photoA.safeImage}
-                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold mb-8 rounded-2xl"
+                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold mb-8"
                     style={{
-                      fontSize: 15.5, color: '#FFFFFF',
-                      background: (status === 'loading' || photoA.blurring || !photoA.safeImage) ? C.inkFaint : C.accent,
-                      padding: '16px 16px',
-                      boxShadow: (status === 'loading' || photoA.blurring || !photoA.safeImage) ? SHADOW.inset : SHADOW.accent,
+                      fontSize: 15.5, padding: '16px 16px', borderRadius: RADIUS.medium,
+                      ...BUTTON.primary(status === 'loading' || photoA.blurring || !photoA.safeImage),
                     }}
                   >
                     {photoA.blurring ? (
@@ -250,7 +248,7 @@ export default function OutfitStylist() {
                     ) : status === 'loading' ? (
                       <>
                         <svg width="17" height="17" viewBox="0 0 16 16" className="spin-anim" style={{ animation: 'spin 0.8s linear infinite' }}>
-                          <circle cx="8" cy="8" r="6" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeDasharray="20 20" strokeLinecap="round" opacity="0.85" />
+                          <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="20 20" strokeLinecap="round" opacity="0.85" />
                         </svg>
                         Kombin inceleniyor…
                       </>
@@ -265,73 +263,67 @@ export default function OutfitStylist() {
 
               {status === 'done' && result && (
                 <div className="stylist-results-col" ref={resultsRef}>
-                <div className="flex flex-col gap-8">
-                  <div
-                    className="flex items-start gap-5 rounded-3xl"
-                    style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 22 }}
-                  >
+                <div className="flex flex-col gap-9">
+                  <div className="flex items-start gap-5">
                     <ScoreHoop puan={result.puan} />
                     <div style={{ paddingTop: 4 }}>
-                      <p className="font-sans" style={{ fontSize: 15.5, color: C.ink, lineHeight: 1.55, fontWeight: 500 }}>
+                      <p className="font-sans" style={{ fontSize: 16, color: C.textPrimary, lineHeight: 1.55, fontWeight: 500 }}>
                         {result.genel_izlenim}
                       </p>
                       <ConfidenceBadge guven={result.guven} />
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    <SectionLabel>Puan Dağılımı</SectionLabel>
-                    <div
-                      className="flex flex-col gap-5 rounded-3xl"
-                      style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 22 }}
-                    >
-                      {CRITERIA.map((c) => (
-                        <CriterionRow key={c.key} label={c.label} weight={c.weight} data={result.kriterler?.[c.key]} Icon={c.Icon} />
-                      ))}
+                  <div>
+                    <hr className="hairline-divider mb-6" />
+                    <div className="flex flex-col gap-4">
+                      <SectionLabel>Puan Dağılımı</SectionLabel>
+                      <div className="flex flex-col gap-5">
+                        {CRITERIA.map((c) => (
+                          <CriterionRow key={c.key} label={c.label} weight={c.weight} data={result.kriterler?.[c.key]} Icon={c.Icon} />
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    <SectionLabel>Küçük Ayarlamalar</SectionLabel>
-                    <div
-                      className="flex flex-col gap-4 rounded-3xl"
-                      style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 22 }}
-                    >
-                      {(result.oneriler || []).map((o, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <span
-                            className="font-sans font-bold flex items-center justify-center shrink-0 rounded-full"
-                            style={{ width: 24, height: 24, fontSize: 11.5, color: C.accent, background: C.bg, boxShadow: SHADOW.inset }}
-                          >
-                            {i + 1}
-                          </span>
-                          <p className="font-sans" style={{ fontSize: 14.5, color: C.ink, lineHeight: 1.55, paddingTop: 2 }}>{o}</p>
-                        </div>
-                      ))}
+                  <div>
+                    <hr className="hairline-divider mb-6" />
+                    <div className="flex flex-col gap-4">
+                      <SectionLabel>Küçük Ayarlamalar</SectionLabel>
+                      <div className="flex flex-col gap-4">
+                        {(result.oneriler || []).map((o, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <span
+                              className="font-sans font-bold flex items-center justify-center shrink-0 rounded-full"
+                              style={{ width: 22, height: 22, fontSize: 11, color: C.accent, background: C.surface }}
+                            >
+                              {i + 1}
+                            </span>
+                            <p className="font-sans" style={{ fontSize: 14.5, color: C.textPrimary, lineHeight: 1.55, paddingTop: 1 }}>{o}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => shareResult(photoA.safeImage, result)}
-                    disabled={sharing}
-                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
-                    style={{
-                      fontSize: 14.5, color: '#FFFFFF',
-                      background: sharing ? C.inkFaint : C.accent,
-                      boxShadow: sharing ? SHADOW.inset : SHADOW.accent,
-                      padding: '15px 16px',
-                    }}
-                  >
-                    <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Sonucu Paylaş'}
-                  </button>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => shareResult(photoA.safeImage, result)}
+                      disabled={sharing}
+                      className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                      style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
+                    >
+                      <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Sonucu Paylaş'}
+                    </button>
 
-                  <button
-                    onClick={reset}
-                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
-                    style={{ fontSize: 14.5, color: C.ink, background: C.bg, boxShadow: SHADOW.raisedSm, padding: '15px 16px' }}
-                  >
-                    <RefreshCw size={16} /> Başka Bir Kombin Dene
-                  </button>
+                    <button
+                      onClick={reset}
+                      className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                      style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.secondary() }}
+                    >
+                      <RefreshCw size={16} /> Başka Bir Kombin Dene
+                    </button>
+                  </div>
                 </div>
                 </div>
               )}
@@ -343,11 +335,11 @@ export default function OutfitStylist() {
           <div>
             {compareStatus !== 'done' && (
               <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin A</p>
                   <PhotoSlot photo={photoA} compact />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin B</p>
                   <PhotoSlot photo={photoB} compact />
                 </div>
@@ -361,18 +353,16 @@ export default function OutfitStylist() {
                 <button
                   onClick={compareAnalyze}
                   disabled={compareStatus === 'loading' || photoA.blurring || photoB.blurring || !photoA.safeImage || !photoB.safeImage}
-                  className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
+                  className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
                   style={{
-                    fontSize: 15.5, color: '#FFFFFF',
-                    background: (compareStatus === 'loading' || photoA.blurring || photoB.blurring || !photoA.safeImage || !photoB.safeImage) ? C.inkFaint : C.accent,
-                    padding: '16px 16px',
-                    boxShadow: (compareStatus === 'loading' || photoA.blurring || photoB.blurring || !photoA.safeImage || !photoB.safeImage) ? SHADOW.inset : SHADOW.accent,
+                    fontSize: 15.5, padding: '16px 16px', borderRadius: RADIUS.medium,
+                    ...BUTTON.primary(compareStatus === 'loading' || photoA.blurring || photoB.blurring || !photoA.safeImage || !photoB.safeImage),
                   }}
                 >
                   {compareStatus === 'loading' ? (
                     <>
                       <svg width="17" height="17" viewBox="0 0 16 16" className="spin-anim" style={{ animation: 'spin 0.8s linear infinite' }}>
-                        <circle cx="8" cy="8" r="6" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeDasharray="20 20" strokeLinecap="round" opacity="0.85" />
+                        <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="20 20" strokeLinecap="round" opacity="0.85" />
                       </svg>
                       İkisi de inceleniyor…
                     </>
@@ -380,7 +370,7 @@ export default function OutfitStylist() {
                     <>İkisini Karşılaştır <ChevronRight size={16} /></>
                   )}
                 </button>
-                <p className="font-sans text-center" style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 10 }}>
+                <p className="font-sans text-center" style={{ fontSize: 11.5, color: C.textMuted, marginTop: 10 }}>
                   Bu işlem iki ayrı değerlendirme yapar: her kombin tek tek puanlanır (tek-kombin değerlendirmesinin iki katı).
                 </p>
 
@@ -396,19 +386,19 @@ export default function OutfitStylist() {
               ];
               return (
                 <div ref={resultsRef} className="flex flex-col gap-6 mt-8">
-                  <div className="rounded-3xl text-center" style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 22 }}>
+                  <div className="text-center" style={{ background: C.surfaceSubtle, borderRadius: RADIUS.large, padding: 22 }}>
                     <SectionLabel>Sonuç</SectionLabel>
-                    <p className="font-sans font-bold" style={{ fontSize: 17, color: C.ink, marginTop: 8 }}>{verdict.text}</p>
+                    <p className="font-display" style={{ fontSize: 19, fontWeight: 600, color: C.textPrimary, marginTop: 8 }}>{verdict.text}</p>
                   </div>
 
                   <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 1fr' }}>
                     {sides.map(({ label, photo, r }) => (
                       <div
                         key={label}
-                        className="flex flex-col gap-4 rounded-3xl"
+                        className="flex flex-col gap-4"
                         style={{
-                          background: C.bg, padding: 18,
-                          boxShadow: verdict.winner === label ? SHADOW.accent : SHADOW.raised,
+                          minWidth: 0, borderRadius: RADIUS.large, padding: 18,
+                          border: `1.5px solid ${verdict.winner === label ? C.accent : C.borderSubtle}`,
                         }}
                       >
                         <span className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, letterSpacing: '0.05em' }}>
@@ -417,25 +407,20 @@ export default function OutfitStylist() {
                         <img
                           src={(photo.safeImage || photo.rawImage).dataUrl}
                           alt={`Kombin ${label}`}
-                          className="w-full object-cover rounded-2xl"
-                          style={{ maxHeight: 220 }}
+                          className="w-full object-cover"
+                          style={{ maxHeight: 220, borderRadius: RADIUS.medium }}
                         />
                         <div className="flex items-start gap-3">
                           <ScoreHoop puan={r.puan} />
-                          <p className="font-sans" style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.5, fontWeight: 500, paddingTop: 4 }}>
+                          <p className="font-sans" style={{ fontSize: 13.5, color: C.textPrimary, lineHeight: 1.5, fontWeight: 500, paddingTop: 4 }}>
                             {r.genel_izlenim}
                           </p>
                         </div>
                         <button
                           onClick={() => shareResult(photo.safeImage, r)}
                           disabled={sharing}
-                          className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
-                          style={{
-                            fontSize: 13, color: '#FFFFFF',
-                            background: sharing ? C.inkFaint : C.accent,
-                            boxShadow: sharing ? SHADOW.inset : SHADOW.accent,
-                            padding: '11px 14px',
-                          }}
+                          className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                          style={{ fontSize: 13, padding: '11px 14px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
                         >
                           <Share2 size={13} /> Paylaş
                         </button>
@@ -445,8 +430,8 @@ export default function OutfitStylist() {
 
                   <button
                     onClick={resetCompare}
-                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold rounded-2xl"
-                    style={{ fontSize: 14.5, color: C.ink, background: C.bg, boxShadow: SHADOW.raisedSm, padding: '15px 16px' }}
+                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                    style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.secondary() }}
                   >
                     <RefreshCw size={16} /> Yeni Karşılaştırma
                   </button>

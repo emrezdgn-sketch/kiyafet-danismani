@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Camera, Upload, X } from 'lucide-react';
-import { C, SHADOW } from '../constants.js';
+import { C, SHADOW, RADIUS, BUTTON } from '../constants.js';
 import { ErrorBanner } from './ErrorBanner.jsx';
 
 export function PhotoSlot({ photo, compact, locked }) {
@@ -25,47 +25,47 @@ export function PhotoSlot({ photo, compact, locked }) {
           onDragOver={photo.onZoneDragOver}
           onDragLeave={photo.onZoneDragLeave}
           onDrop={photo.onZoneDrop}
-          className={`flex flex-col items-center justify-center text-center cursor-pointer rounded-3xl ${compact ? 'px-4 py-10' : 'px-6 py-20'}`}
+          className={`flex flex-col items-center justify-center text-center cursor-pointer ${compact ? 'px-4 py-10' : 'px-6 py-24'}`}
           style={{
-            background: C.bg,
-            boxShadow: photo.isDragOver ? SHADOW.raised : SHADOW.inset,
-            border: `2px dashed ${photo.isDragOver ? C.accent : C.line}`,
-            transform: photo.isDragOver ? 'scale(1.01)' : 'scale(1)',
-            transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+            background: photo.isDragOver ? C.surfaceSubtle : 'transparent',
+            borderRadius: RADIUS.large,
+            border: `1.5px dashed ${photo.isDragOver ? C.accent : C.borderSubtle}`,
+            transform: photo.isDragOver ? 'scale(1.005)' : 'scale(1)',
+            transition: 'background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
           }}
         >
           <div
-            className={compact ? 'rounded-full flex items-center justify-center mb-3' : 'rounded-full flex items-center justify-center mb-5'}
+            className={compact ? 'rounded-full flex items-center justify-center mb-3' : 'rounded-full flex items-center justify-center mb-6'}
             style={{
-              width: compact ? 52 : 72, height: compact ? 52 : 72, background: C.bg,
-              boxShadow: photo.isDragOver ? SHADOW.accent : SHADOW.raised,
+              width: compact ? 48 : 64, height: compact ? 48 : 64,
+              background: C.surface,
               color: C.accent,
-              transform: photo.isDragOver ? 'scale(1.1)' : 'scale(1)',
-              transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+              transform: photo.isDragOver ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
             }}
           >
-            <Upload size={compact ? 20 : 28} strokeWidth={1.6} />
+            <Upload size={compact ? 18 : 24} strokeWidth={1.6} />
           </div>
-          <p className="font-sans font-bold" style={{ fontSize: compact ? 14.5 : 19, color: C.ink, marginBottom: compact ? 4 : 8 }}>
+          <p className="font-display" style={{ fontSize: compact ? 16 : 22, fontWeight: 600, color: C.textPrimary, marginBottom: compact ? 4 : 8 }}>
             {photo.isDragOver ? 'Bırakın…' : 'Fotoğrafı sürükleyin'}
           </p>
           {!compact && (
-            <p className="font-sans" style={{ fontSize: 14.5, color: C.inkSoft, marginBottom: 24, maxWidth: 300 }}>
+            <p className="font-sans" style={{ fontSize: 14.5, color: C.textSecondary, marginBottom: 28, maxWidth: 300, lineHeight: 1.5 }}>
               Kombinin net görünen, tam boy veya üst gövde fotoğrafı en iyi sonucu verir.
             </p>
           )}
-          <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap justify-center gap-3" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => cameraRef.current && cameraRef.current.click()}
-              className="press-btn flex items-center gap-2 font-sans font-semibold rounded-2xl"
-              style={{ fontSize: compact ? 12.5 : 14, color: C.ink, background: C.bg, boxShadow: SHADOW.raisedSm, padding: compact ? '9px 12px' : '12px 18px' }}
+              className="press-btn flex items-center gap-2 font-sans font-semibold"
+              style={{ fontSize: compact ? 12.5 : 14, borderRadius: RADIUS.medium, padding: compact ? '9px 14px' : '13px 20px', ...BUTTON.secondary() }}
             >
               <Camera size={compact ? 14 : 17} /> {compact ? 'Çek' : 'Fotoğraf Çek'}
             </button>
             <button
               onClick={() => galleryRef.current && galleryRef.current.click()}
-              className="press-btn flex items-center gap-2 font-sans font-semibold rounded-2xl"
-              style={{ fontSize: compact ? 12.5 : 14, color: '#FFFFFF', background: C.accent, boxShadow: SHADOW.accent, padding: compact ? '9px 12px' : '12px 18px' }}
+              className="press-btn flex items-center gap-2 font-sans font-semibold"
+              style={{ fontSize: compact ? 12.5 : 14, borderRadius: RADIUS.medium, padding: compact ? '9px 14px' : '13px 20px', ...BUTTON.primary() }}
             >
               <Upload size={compact ? 14 : 17} /> {compact ? 'Seç' : 'Galeriden Seç'}
             </button>
@@ -73,7 +73,7 @@ export function PhotoSlot({ photo, compact, locked }) {
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={photo.onPick} className="hidden" />
           <input ref={galleryRef} type="file" accept="image/*" onChange={photo.onPick} className="hidden" />
           {!compact && (
-            <p className="font-sans" style={{ fontSize: 11.5, color: C.inkFaint, marginTop: 20, maxWidth: 300, lineHeight: 1.6 }}>
+            <p className="font-sans" style={{ fontSize: 11.5, color: C.textMuted, marginTop: 22, maxWidth: 300, lineHeight: 1.6 }}>
               Yüzün otomatik olarak bulanıklaştırılır; orijinal fotoğraf hiçbir yere gönderilmez, sadece bulanıklaştırılmış hâli kıyafet analizi için paylaşılır.
             </p>
           )}
@@ -87,8 +87,8 @@ export function PhotoSlot({ photo, compact, locked }) {
     <div>
       <div
         ref={photo.photoRef}
-        className={compact ? 'relative overflow-hidden select-none rounded-3xl mb-3' : 'relative overflow-hidden select-none rounded-3xl mb-5'}
-        style={{ background: C.bg, boxShadow: SHADOW.raised, padding: 12, touchAction: (photo.faceBlurEnabled && !locked) ? 'none' : 'auto' }}
+        className={compact ? 'relative overflow-hidden select-none mb-3' : 'relative overflow-hidden select-none mb-5'}
+        style={{ borderRadius: RADIUS.large, boxShadow: SHADOW.soft, touchAction: (photo.faceBlurEnabled && !locked) ? 'none' : 'auto' }}
         onMouseMove={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragMove : undefined}
         onMouseUp={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
         onMouseLeave={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
@@ -99,7 +99,7 @@ export function PhotoSlot({ photo, compact, locked }) {
           src={(photo.safeImage || photo.rawImage).dataUrl}
           alt="Yüklenen kombin (yüz bulanıklaştırılmış önizleme)"
           className={compact ? 'w-full object-cover block' : 'w-full object-cover block stylist-photo-img'}
-          style={{ borderRadius: 18, opacity: photo.blurring ? 0.6 : 1, maxHeight: compact ? 320 : undefined }}
+          style={{ opacity: photo.blurring ? 0.6 : 1, maxHeight: compact ? 360 : undefined }}
           draggable={false}
         />
         {photo.faceBlurEnabled && !locked && (
@@ -107,9 +107,9 @@ export function PhotoSlot({ photo, compact, locked }) {
             <div
               className="absolute pointer-events-none"
               style={{
-                left: `calc(12px + ${photo.blurCenterX} * (100% - 24px))`,
-                top: `calc(12px + ${photo.blurCenterY} * (100% - 24px))`,
-                width: `calc(${photo.blurRadius * 2} * (100% - 24px))`,
+                left: `calc(${photo.blurCenterX} * 100%)`,
+                top: `calc(${photo.blurCenterY} * 100%)`,
+                width: `calc(${photo.blurRadius * 2} * 100%)`,
                 aspectRatio: '1',
                 transform: 'translate(-50%, -50%)',
                 borderRadius: '50%',
@@ -124,8 +124,8 @@ export function PhotoSlot({ photo, compact, locked }) {
               aria-valuetext={`Yatay %${Math.round(photo.blurCenterX * 100)}, dikey %${Math.round(photo.blurCenterY * 100)}`}
               className="absolute flex items-center justify-center press-icon"
               style={{
-                left: `calc(12px + ${photo.blurCenterX} * (100% - 24px))`,
-                top: `calc(12px + ${photo.blurCenterY} * (100% - 24px))`,
+                left: `calc(${photo.blurCenterX} * 100%)`,
+                top: `calc(${photo.blurCenterY} * 100%)`,
                 width: 40, height: 40, transform: 'translate(-50%, -50%)',
                 cursor: photo.activeHandleRef.current === 'move' ? 'grabbing' : 'grab',
                 touchAction: 'none',
@@ -148,8 +148,8 @@ export function PhotoSlot({ photo, compact, locked }) {
               aria-valuetext={`Yarıçap %${Math.round(photo.blurRadius * 100)}`}
               className="absolute flex items-center justify-center cursor-ew-resize press-icon"
               style={{
-                left: `calc(12px + ${photo.blurCenterX + photo.blurRadius} * (100% - 24px))`,
-                top: `calc(12px + ${photo.blurCenterY} * (100% - 24px))`,
+                left: `calc(${photo.blurCenterX + photo.blurRadius} * 100%)`,
+                top: `calc(${photo.blurCenterY} * 100%)`,
                 width: 22, height: 22, transform: 'translate(-50%, -50%)',
                 touchAction: 'none',
               }}
@@ -170,7 +170,7 @@ export function PhotoSlot({ photo, compact, locked }) {
           <button
             onClick={photo.reset}
             className="press-icon press-btn absolute flex items-center justify-center rounded-full"
-            style={{ top: compact ? 14 : 24, right: compact ? 14 : 24, width: 32, height: 32, background: C.bg, color: C.ink, boxShadow: SHADOW.raisedSm }}
+            style={{ top: compact ? 12 : 16, right: compact ? 12 : 16, width: 32, height: 32, background: 'rgba(0,0,0,0.45)', color: '#FFFFFF', boxShadow: 'none' }}
             aria-label="Fotoğrafı kaldır"
           >
             <X size={15} />
@@ -179,14 +179,14 @@ export function PhotoSlot({ photo, compact, locked }) {
       </div>
 
       {!locked && (
-        <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans'} style={{ fontSize: compact ? 12 : 13, color: C.inkSoft, fontWeight: 500 }}>
+        <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans'} style={{ fontSize: compact ? 12 : 13, color: C.textSecondary, fontWeight: 500 }}>
           <input
             type="checkbox"
             checked={photo.faceBlurEnabled}
             onChange={(e) => photo.setFaceBlurEnabled(e.target.checked)}
             style={{ accentColor: C.accent, width: 16, height: 16 }}
           />
-          Yüzümü bulanıklaştır {!compact && <span style={{ color: C.inkFaint, fontWeight: 400 }}>(ortadan taşı, kenardan boyutlandır)</span>}
+          Yüzümü bulanıklaştır {!compact && <span style={{ color: C.textMuted, fontWeight: 400 }}>(ortadan taşı, kenardan boyutlandır)</span>}
         </label>
       )}
       {photo.loadError && <ErrorBanner message={photo.loadError} />}

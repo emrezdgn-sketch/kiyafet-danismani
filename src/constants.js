@@ -1,5 +1,8 @@
 import { Palette, Shirt, Ruler, Sun, Gem } from 'lucide-react';
 
+// Raw palette (kept for existing call sites) plus the semantic layer new
+// code should prefer — see docs/VISUAL_SYSTEM.md. Both point at the same
+// CSS custom properties in src/index.css, so there is one source of truth.
 export const C = {
   bg: 'var(--bg)',
   ink: 'var(--ink)',
@@ -10,13 +13,60 @@ export const C = {
   warning: 'var(--warning)',
   danger: 'var(--danger)',
   line: 'var(--line)',
+
+  surface: 'var(--color-surface)',
+  surfaceSubtle: 'var(--color-surface-subtle)',
+  textPrimary: 'var(--color-text-primary)',
+  textSecondary: 'var(--color-text-secondary)',
+  textMuted: 'var(--color-text-muted)',
+  borderSubtle: 'var(--color-border-subtle)',
+  accentHover: 'var(--color-accent-hover)',
+  positive: 'var(--color-positive)',
+  critical: 'var(--color-critical)',
+  onAccent: 'var(--color-on-accent)',
+};
+
+export const RADIUS = {
+  small: 'var(--radius-small)',
+  medium: 'var(--radius-medium)',
+  large: 'var(--radius-large)',
 };
 
 export const SHADOW = {
-  raised: '9px 9px 20px var(--shadow-d1), -9px -9px 20px var(--shadow-l1)',
-  raisedSm: '5px 5px 12px var(--shadow-d2), -5px -5px 12px var(--shadow-l2)',
   inset: 'inset 5px 5px 11px var(--shadow-d2), inset -5px -5px 11px var(--shadow-l2)',
-  accent: '7px 7px 16px var(--shadow-ad), -5px -5px 14px var(--shadow-al)',
+  // A single restrained ambient shadow — used sparingly for the few
+  // surfaces that still warrant elevation (see docs/VISUAL_SYSTEM.md
+  // "Shadows"). The old dual-light-dark neumorphic emboss is retired.
+  soft: 'var(--shadow-soft)',
+};
+
+// Three-level button hierarchy (docs/VISUAL_SYSTEM.md "Button hierarchy").
+// One dominant primary action per screen; secondary is an outline/ghost
+// button; tertiary is a plain text action. Consumers spread the returned
+// object onto a button's style prop.
+export const BUTTON = {
+  primary: (disabled = false) => ({
+    // Disabled/loading uses a neutral surface with primary-toned text
+    // rather than muted-on-muted — verified >10:1 contrast in both themes
+    // (docs/VISUAL_SYSTEM.md "Accessibility"), unlike a straight opacity
+    // fade which can wash out below AA on the light palette.
+    color: disabled ? C.textPrimary : C.onAccent,
+    background: disabled ? C.borderSubtle : C.accent,
+    boxShadow: disabled ? SHADOW.inset : SHADOW.soft,
+    border: '1px solid transparent',
+  }),
+  secondary: (disabled = false) => ({
+    color: disabled ? C.textMuted : C.textPrimary,
+    background: 'transparent',
+    boxShadow: 'none',
+    border: `1.5px solid ${C.borderSubtle}`,
+  }),
+  tertiary: {
+    color: C.textSecondary,
+    background: 'transparent',
+    boxShadow: 'none',
+    border: 'none',
+  },
 };
 
 export const CRITERIA = [
@@ -46,9 +96,12 @@ export function scoreTier(p) {
   return SCORE_TIERS.find((t) => p <= t.max) || SCORE_TIERS[SCORE_TIERS.length - 1];
 }
 
+// Canvas-rendered share card can't read CSS custom properties, so these are
+// literal hex values — must be kept in sync with the light-mode tokens in
+// src/index.css (see docs/VISUAL_SYSTEM.md).
 export const SHARE_PALETTE = {
   bg: '#F5F0E6', ink: '#2B251E', inkSoft: '#75695A', inkFaint: '#A89C89',
-  accent: '#B5563D', success: '#4C7A5E', warning: '#BE8A34', line: '#E6DECF',
+  accent: '#8B3A42', success: '#4C7A5E', warning: '#BE8A34', line: '#E6DECF',
 };
 
 export const HISTORY_LIMIT = 12;

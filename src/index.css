@@ -2,24 +2,58 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Fraunces', 'Plus Jakarta Sans', serif;
 }
 
 :root {
+  /* Raw palette */
   --bg: #F5F0E6;
   --ink: #2B251E;
   --ink-soft: #75695A;
   --ink-faint: #A89C89;
-  --accent: #B5563D;
-  --accent-rgb: 181,86,61;
+  --accent: #8B3A42;
+  --accent-rgb: 139,58,66;
+  --accent-hover: #7A3038;
   --success: #4C7A5E;
   --warning: #BE8A34;
   --danger: #C0392B;
   --line: #E6DECF;
+  --surface: #EFE7D8;
+  --surface-subtle: #F9F5EC;
+
+  /* Semantic tokens — future phases (P2-P5) should reach for these first */
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-soft);
+  --color-text-muted: var(--ink-faint);
+  --color-border-subtle: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-positive: var(--success);
+  --color-warning: var(--warning);
+  --color-critical: var(--danger);
+  /* Text/icon color placed ON TOP of a solid --color-accent fill. White in
+     light mode (accent is dark enough); in dark mode the accent is a bright
+     dusty rose, so white fails contrast (~2.6:1) — see docs/VISUAL_SYSTEM.md
+     "Accessibility". */
+  --color-on-accent: #FFFFFF;
+
+  --radius-small: 12px;
+  --radius-medium: 20px;
+  --radius-large: 28px;
+
+  --shadow-soft: 0 10px 28px rgba(43,37,30,0.10);
+
+  --page-max-width: 560px;
+  --page-max-width-wide: 1100px;
+
   --shadow-d1: rgba(43,37,30,0.12);
   --shadow-l1: rgba(255,255,255,0.9);
   --shadow-d2: rgba(43,37,30,0.10);
   --shadow-l2: rgba(255,255,255,0.85);
-  --shadow-ad: rgba(181,86,61,0.32);
+  --shadow-ad: rgba(139,58,66,0.28);
   --shadow-al: rgba(255,255,255,0.5);
 }
 
@@ -29,17 +63,25 @@
     --ink: #F2EAD9;
     --ink-soft: #B8AA96;
     --ink-faint: #7C6F5D;
-    --accent: #E07856;
-    --accent-rgb: 224,120,86;
+    --accent: #D98F82;
+    --accent-rgb: 217,143,130;
+    --accent-hover: #E3A296;
     --success: #6FAE8A;
     --warning: #D9A54B;
     --danger: #E2695A;
     --line: #3A342C;
+    --surface: #262119;
+    --surface-subtle: #221E18;
+    /* 6.6:1 against --accent — see the --color-on-accent note above. */
+    --color-on-accent: #1E1B17;
+
+    --shadow-soft: 0 10px 28px rgba(0,0,0,0.45);
+
     --shadow-d1: rgba(0,0,0,0.55);
     --shadow-l1: rgba(255,255,255,0.045);
     --shadow-d2: rgba(0,0,0,0.5);
     --shadow-l2: rgba(255,255,255,0.04);
-    --shadow-ad: rgba(224,120,86,0.4);
+    --shadow-ad: rgba(217,143,130,0.35);
     --shadow-al: rgba(255,255,255,0.05);
   }
 }
@@ -65,22 +107,32 @@ html, body {
   .press-btn { transition: none !important; }
 }
 
-.stylist-wrap { max-width: 540px; margin: 0 auto; }
+.stylist-wrap { max-width: var(--page-max-width); margin: 0 auto; }
 .stylist-layout { display: flex; flex-direction: column; gap: 28px; }
 .stylist-photo-col { width: 100%; }
 .stylist-results-col { width: 100%; }
 .stylist-photo-img { max-height: 480px; }
 
 @media (min-width: 760px) {
-  .stylist-wrap { max-width: 1100px; }
+  .stylist-wrap { max-width: var(--page-max-width-wide); }
   .stylist-layout { flex-direction: row; align-items: flex-start; gap: 44px; }
   .stylist-photo-col { width: 400px; flex-shrink: 0; position: sticky; top: 28px; }
   .stylist-results-col { flex: 1; min-width: 0; }
   .stylist-photo-img { max-height: 620px; }
 }
 
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+.hairline-divider {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
 .press-btn {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 .press-btn:hover { transform: translateY(-2px); }
 .press-btn:active { transform: translateY(0) scale(0.99); }
@@ -92,4 +144,3 @@ html, body {
 }
 .press-icon { transition: transform 0.15s ease; }
 .press-icon:hover { transform: scale(1.08); }
-.idea-card:hover { transform: translateY(-2px); }
