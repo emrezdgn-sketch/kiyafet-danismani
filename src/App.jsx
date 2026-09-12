@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { ChevronRight, RefreshCw, Share2 } from 'lucide-react';
-import { C, RADIUS, BUTTON, CRITERIA, HISTORY_LIMIT } from './constants.js';
+import { C, RADIUS, BUTTON, CRITERIA, HISTORY_LIMIT, strongestCriterion } from './constants.js';
 import { runAnalysis, compareVerdict } from './api.js';
 import { loadHistory, saveHistory, makeThumbnail } from './history.js';
 import { buildShareCardBlob } from './share.js';
@@ -187,37 +187,6 @@ export default function OutfitStylist() {
           </p>
         </div>
 
-        {noPhotoYet && (
-          <div className="flex gap-2 mb-8">
-            <button
-              type="button"
-              onClick={() => switchMode('single')}
-              className="press-btn font-sans font-semibold"
-              style={{
-                fontSize: 13, padding: '10px 16px', borderRadius: RADIUS.medium,
-                color: mode === 'single' ? C.onAccent : C.textPrimary,
-                background: mode === 'single' ? C.accent : 'transparent',
-                border: `1.5px solid ${mode === 'single' ? C.accent : C.borderSubtle}`,
-              }}
-            >
-              Tek Kombin
-            </button>
-            <button
-              type="button"
-              onClick={() => switchMode('compare')}
-              className="press-btn font-sans font-semibold"
-              style={{
-                fontSize: 13, padding: '10px 16px', borderRadius: RADIUS.medium,
-                color: mode === 'compare' ? C.onAccent : C.textPrimary,
-                background: mode === 'compare' ? C.accent : 'transparent',
-                border: `1.5px solid ${mode === 'compare' ? C.accent : C.borderSubtle}`,
-              }}
-            >
-              İki Kombini Karşılaştır
-            </button>
-          </div>
-        )}
-
         {mode === 'single' && !photoA.rawImage && <HistoryStrip history={history} onClear={clearHistory} />}
 
         {mode === 'single' && (
@@ -225,6 +194,16 @@ export default function OutfitStylist() {
             <>
               <PhotoSlot photo={photoA} />
               {status === 'error' && <ErrorBanner message={errorMsg} />}
+              {noPhotoYet && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('compare')}
+                  className="press-btn font-sans"
+                  style={{ fontSize: 13.5, color: C.textSecondary, background: 'none', border: 'none', padding: 0, marginTop: 20, cursor: 'pointer', textAlign: 'left' }}
+                >
+                  İki kombin arasında mı kaldın? <span style={{ color: C.accent, fontWeight: 700 }}>Hangisini Giyeyim? →</span>
+                </button>
+              )}
             </>
           ) : (
             <div className="stylist-layout">
@@ -270,7 +249,39 @@ export default function OutfitStylist() {
                       <p className="font-sans" style={{ fontSize: 16, color: C.textPrimary, lineHeight: 1.55, fontWeight: 500 }}>
                         {result.genel_izlenim}
                       </p>
-                      <ConfidenceBadge guven={result.guven} />
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const strongest = strongestCriterion(result.kriterler);
+                    return strongest ? (
+                      <div>
+                        <hr className="hairline-divider mb-6" />
+                        <div className="flex flex-col gap-4">
+                          <SectionLabel>En Güçlü Taraf</SectionLabel>
+                          <CriterionRow label={strongest.label} weight={strongest.weight} data={strongest.data} Icon={strongest.Icon} />
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  <div>
+                    <hr className="hairline-divider mb-6" />
+                    <div className="flex flex-col gap-4">
+                      <SectionLabel>Bir Kademe Yukarı</SectionLabel>
+                      <div className="flex flex-col gap-4">
+                        {(result.oneriler || []).slice(0, 3).map((o, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <span
+                              className="font-sans font-bold flex items-center justify-center shrink-0 rounded-full"
+                              style={{ width: 22, height: 22, fontSize: 11, color: C.accent, background: C.surface }}
+                            >
+                              {i + 1}
+                            </span>
+                            <p className="font-sans" style={{ fontSize: 14.5, color: C.textPrimary, lineHeight: 1.55, paddingTop: 1 }}>{o}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -283,26 +294,7 @@ export default function OutfitStylist() {
                           <CriterionRow key={c.key} label={c.label} weight={c.weight} data={result.kriterler?.[c.key]} Icon={c.Icon} />
                         ))}
                       </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <hr className="hairline-divider mb-6" />
-                    <div className="flex flex-col gap-4">
-                      <SectionLabel>Küçük Ayarlamalar</SectionLabel>
-                      <div className="flex flex-col gap-4">
-                        {(result.oneriler || []).map((o, i) => (
-                          <div key={i} className="flex items-start gap-3">
-                            <span
-                              className="font-sans font-bold flex items-center justify-center shrink-0 rounded-full"
-                              style={{ width: 22, height: 22, fontSize: 11, color: C.accent, background: C.surface }}
-                            >
-                              {i + 1}
-                            </span>
-                            <p className="font-sans" style={{ fontSize: 14.5, color: C.textPrimary, lineHeight: 1.55, paddingTop: 1 }}>{o}</p>
-                          </div>
-                        ))}
-                      </div>
+                      <ConfidenceBadge guven={result.guven} />
                     </div>
                   </div>
 
@@ -334,7 +326,23 @@ export default function OutfitStylist() {
         {mode === 'compare' && (
           <div>
             {compareStatus !== 'done' && (
-              <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <>
+                <div className="flex items-baseline justify-between mb-6">
+                  <h2 className="font-display" style={{ fontSize: 24, fontWeight: 600, color: C.textPrimary }}>
+                    Hangisini Giyeyim?
+                  </h2>
+                  {noPhotoYet && (
+                    <button
+                      type="button"
+                      onClick={() => switchMode('single')}
+                      className="press-btn font-sans font-semibold"
+                      style={{ fontSize: 12.5, color: C.textSecondary, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                    >
+                      ‹ Geri
+                    </button>
+                  )}
+                </div>
+                <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <div style={{ minWidth: 0 }}>
                   <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin A</p>
                   <PhotoSlot photo={photoA} compact />
@@ -343,7 +351,8 @@ export default function OutfitStylist() {
                   <p className="font-sans font-bold uppercase" style={{ fontSize: 11, color: C.accent, marginBottom: 8, letterSpacing: '0.05em' }}>Kombin B</p>
                   <PhotoSlot photo={photoB} compact />
                 </div>
-              </div>
+                </div>
+              </>
             )}
 
             {compareStatus !== 'done' && (photoA.rawImage || photoB.rawImage) && (
@@ -410,9 +419,9 @@ export default function OutfitStylist() {
                           className="w-full object-cover"
                           style={{ maxHeight: 220, borderRadius: RADIUS.medium }}
                         />
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3" style={{ minWidth: 0 }}>
                           <ScoreHoop puan={r.puan} />
-                          <p className="font-sans" style={{ fontSize: 13.5, color: C.textPrimary, lineHeight: 1.5, fontWeight: 500, paddingTop: 4 }}>
+                          <p className="font-sans" style={{ fontSize: 13.5, color: C.textPrimary, lineHeight: 1.5, fontWeight: 500, paddingTop: 4, minWidth: 0 }}>
                             {r.genel_izlenim}
                           </p>
                         </div>

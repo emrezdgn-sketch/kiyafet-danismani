@@ -96,6 +96,22 @@ export function scoreTier(p) {
   return SCORE_TIERS.find((t) => p <= t.max) || SCORE_TIERS[SCORE_TIERS.length - 1];
 }
 
+// "En Güçlü Taraf" (Product P2): the highest-scoring canonical criterion.
+// Never recalculates a score — reads the Worker's canonical kriterler as-is.
+// Ties break by CRITERIA order (i.e. by weight, descending), since the
+// strict `>` below only replaces the running best on a strictly higher score.
+export function strongestCriterion(kriterler) {
+  let best = null;
+  for (const c of CRITERIA) {
+    const score = Number(kriterler?.[c.key]?.puan);
+    if (!Number.isFinite(score)) continue;
+    if (!best || score > best.score) {
+      best = { ...c, score, data: kriterler[c.key] };
+    }
+  }
+  return best;
+}
+
 // Canvas-rendered share card can't read CSS custom properties, so these are
 // literal hex values — must be kept in sync with the light-mode tokens in
 // src/index.css (see docs/VISUAL_SYSTEM.md).

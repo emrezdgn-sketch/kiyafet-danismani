@@ -47,7 +47,7 @@ export function PhotoSlot({ photo, compact, locked }) {
             <Upload size={compact ? 18 : 24} strokeWidth={1.6} />
           </div>
           <p className="font-display" style={{ fontSize: compact ? 16 : 22, fontWeight: 600, color: C.textPrimary, marginBottom: compact ? 4 : 8 }}>
-            {photo.isDragOver ? 'Bırakın…' : 'Fotoğrafı sürükleyin'}
+            {photo.isDragOver ? 'Bırakın…' : 'Kombinini Göster'}
           </p>
           {!compact && (
             <p className="font-sans" style={{ fontSize: 14.5, color: C.textSecondary, marginBottom: 28, maxWidth: 300, lineHeight: 1.5 }}>

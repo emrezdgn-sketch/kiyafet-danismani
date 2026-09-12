@@ -73,3 +73,54 @@ trustworthy.
 
 **Recommended next phase:** Product P1 — Brand & Visual System (not started;
 requires separate approval to begin, per the roadmap).
+
+### 2026-09-12 — Product P2: Core Decision UX implemented
+
+**Decision — verdict field:** The canonical DTO (`docs/DECISIONS.md`) has
+one narrative text field, `genel_izlenim`, not two. The IA target in
+`docs/UX_CONTRACT.md` ("verdict" then a separate "short explanation") was
+implemented as **one** field serving both roles — `genel_izlenim` is
+rendered once, directly beside the score, immediately after the photo. This
+was judged sufficient rather than BLOCKED: `genel_izlenim` is already
+written in the model's judgment-bearing voice (a 1–2 sentence assessment,
+not a neutral description), so splitting it into a separate punchy tag plus
+a restated explanation would either require inventing a client-side
+score-threshold verdict generator (explicitly disallowed) or a Worker/prompt
+change (out of scope for this phase). No contract change was made or
+proposed.
+
+**Implemented:**
+- Removed the "Tek Kombin" / "İki Kombini Karşılaştır" mode toggle. The
+  single-analysis flow is now the default photo-first entry (headline
+  "Kombinini Göster" inside the existing upload dropzone); a plain-text
+  link — "İki kombin arasında mı kaldın? **Hangisini Giyeyim? →**" — is the
+  only compare entry point, appearing only before any photo is picked.
+  Compare mode now opens under a "Hangisini Giyeyim?" heading with a "‹
+  Geri" link back to single, replacing the old two-button toggle.
+- Single-result hierarchy reordered to: photo → score + verdict
+  (`genel_izlenim`) → **En Güçlü Taraf** (highest canonical criterion,
+  ties broken by existing `CRITERIA` order — see `strongestCriterion()` in
+  `src/constants.js`) → **Bir Kademe Yukarı** (existing `oneriler`, capped
+  to 3) → full criterion breakdown ("Puan Dağılımı", unchanged label) with
+  the confidence badge moved into this detail section (Level 3 per
+  `docs/UX_CONTRACT.md`'s IA) → share/reset actions.
+- Compare result screen, scoring math, and `compareVerdict()` are untouched
+  — no additional AI call, no recalculated score, per this phase's
+  constraints.
+
+**Not implemented (explicitly deferred):** the "Nereye gidiyorsun?" occasion
+question reword from `docs/UX_CONTRACT.md` — not in this phase's numbered
+scope, left as-is to avoid an unrequested copy change.
+
+**Test evidence:** `npm test` (32/32, unchanged — no Worker/validation code
+touched) and `npx vite build`. Visual QA used a temporary in-memory
+`runAnalysis` fixture (never committed — restored and diff-verified clean
+before this commit) driven through a real headless-Chromium session to
+screenshot the actual restructured result and compare screens.
+
+**Status:** PASS
+
+**REAL_USER_VALIDATION:** NOT_TESTED
+
+**Recommended next phase:** Product P3 — Improvement Loop (not started;
+requires separate approval to begin, per the roadmap).
