@@ -112,6 +112,18 @@ export function strongestCriterion(kriterler) {
   return best;
 }
 
+// "Şimdi Daha İyi mi?" (Product P3): the Before/After delta. Pure and
+// stateless — takes only the two canonical "puan" values already produced
+// by the Worker and never recomputes or adjusts either one. Ties (delta 0)
+// are their own honest "neutral" state, never nudged toward "positive".
+export function improvementDelta(beforePuan, afterPuan) {
+  const before = Math.round(Number(beforePuan) || 0);
+  const after = Math.round(Number(afterPuan) || 0);
+  const delta = after - before;
+  const state = delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+  return { before, after, delta, state };
+}
+
 // Canvas-rendered share card can't read CSS custom properties, so these are
 // literal hex values — must be kept in sync with the light-mode tokens in
 // src/index.css (see docs/VISUAL_SYSTEM.md).

@@ -12,6 +12,7 @@ import { ErrorBanner } from './components/ErrorBanner.jsx';
 import { HistoryStrip } from './components/HistoryStrip.jsx';
 import { OccasionPicker } from './components/OccasionPicker.jsx';
 import { PhotoSlot } from './components/PhotoSlot.jsx';
+import { ImprovementResult } from './components/ImprovementResult.jsx';
 
 function SectionLabel({ children }) {
   return (
@@ -33,6 +34,13 @@ export default function OutfitStylist() {
 
   const [compareStatus, setCompareStatus] = useState('idle');
   const [compareResult, setCompareResult] = useState(null);
+
+  // Job 3 — "Şimdi Daha İyi mi?" (Product P3). null outside the loop; while
+  // active, holds the frozen BEFORE result/photo so a second run of the
+  // existing single-analysis path can be compared against it. occasion is
+  // intentionally left untouched here so the AFTER run reuses the same
+  // context unless the user changes the OccasionPicker themselves.
+  const [improvement, setImprovement] = useState(null);
 
   const [history, setHistory] = useState(() => loadHistory());
   const [sharing, setSharing] = useState(false);
@@ -107,6 +115,22 @@ export default function OutfitStylist() {
   }, []);
 
   const reset = () => {
+    photoA.reset();
+    setResult(null);
+    setStatus('idle');
+    setErrorMsg('');
+    setImprovement(null);
+  };
+
+  // "Değiştirdim, tekrar bak": freeze the current result as BEFORE, then
+  // hand the flow back to the existing single-photo upload + analyze path
+  // (reused as-is) to collect and score the AFTER photo. No new AI call
+  // type, no server-side storage — beforePhotoUrl is just the same
+  // already-blurred data URL already held in memory for sharing.
+  const startImprovementLoop = () => {
+    const beforePhoto = photoA.safeImage || photoA.rawImage;
+    if (!result || !beforePhoto) return;
+    setImprovement({ beforeResult: result, beforePhotoUrl: beforePhoto.dataUrl });
     photoA.reset();
     setResult(null);
     setStatus('idle');
@@ -187,14 +211,29 @@ export default function OutfitStylist() {
           </p>
         </div>
 
-        {mode === 'single' && !photoA.rawImage && <HistoryStrip history={history} onClear={clearHistory} />}
+        {mode === 'single' && !photoA.rawImage && !improvement && <HistoryStrip history={history} onClear={clearHistory} />}
 
         {mode === 'single' && (
           !photoA.rawImage ? (
             <>
+              {improvement && (
+                <div className="flex items-center justify-between mb-5">
+                  <p className="font-sans font-semibold" style={{ fontSize: 13.5, color: C.textSecondary }}>
+                    Önce: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{improvement.beforeResult.puan}/100</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="press-btn font-sans"
+                    style={{ fontSize: 12.5, color: C.textMuted, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                  >
+                    İptal
+                  </button>
+                </div>
+              )}
               <PhotoSlot photo={photoA} />
               {status === 'error' && <ErrorBanner message={errorMsg} />}
-              {noPhotoYet && (
+              {noPhotoYet && !improvement && (
                 <button
                   type="button"
                   onClick={() => switchMode('compare')}
@@ -205,9 +244,22 @@ export default function OutfitStylist() {
                 </button>
               )}
             </>
+          ) : status === 'done' && result && improvement ? (
+            <ImprovementResult
+              beforeResult={improvement.beforeResult}
+              beforePhotoUrl={improvement.beforePhotoUrl}
+              afterResult={result}
+              afterPhotoUrl={(photoA.safeImage || photoA.rawImage).dataUrl}
+              onReset={reset}
+            />
           ) : (
             <div className="stylist-layout">
               <div className="stylist-photo-col">
+                {improvement && (
+                  <p className="font-sans font-semibold mb-4" style={{ fontSize: 13.5, color: C.textSecondary }}>
+                    Önce: <span style={{ color: C.textPrimary, fontWeight: 700 }}>{improvement.beforeResult.puan}/100</span>
+                  </p>
+                )}
                 <PhotoSlot photo={photoA} locked={status === 'done'} />
 
                 {status !== 'done' && <OccasionPicker occasion={occasion} onChange={setOccasion} />}
@@ -300,10 +352,18 @@ export default function OutfitStylist() {
 
                   <div className="flex flex-col gap-3">
                     <button
+                      onClick={startImprovementLoop}
+                      className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                      style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.primary() }}
+                    >
+                      <RefreshCw size={16} /> Değiştirdim, tekrar bak
+                    </button>
+
+                    <button
                       onClick={() => shareResult(photoA.safeImage, result)}
                       disabled={sharing}
                       className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
-                      style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
+                      style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.secondary(sharing) }}
                     >
                       <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Sonucu Paylaş'}
                     </button>

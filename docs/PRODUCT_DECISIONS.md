@@ -124,3 +124,61 @@ screenshot the actual restructured result and compare screens.
 
 **Recommended next phase:** Product P3 — Improvement Loop (not started;
 requires separate approval to begin, per the roadmap).
+
+### 2026-09-12 — Product P3: Improvement Loop implemented
+
+**Decision — copy for the non-positive states:** The Before/After delta has
+three states (`docs/DECISIONS.md`-style rule: delta is `after.puan -
+before.puan`, computed once in `improvementDelta()`, `src/constants.js`,
+never re-thresholded). Only the positive state has approved copy —
+"ŞİMDİ OLDU." from the Job 3 example in `docs/PRODUCT_VISION.md`. No
+approved line exists for a flat or worse result, so neutral uses a plain
+factual sentence ("Değişen bir şey yok.") and negative reuses an
+already-approved tone example from the same document's Brand Voice section
+("Bir kez daha düşün.") rather than inventing new persona language. Neither
+of the non-positive states was blocked; flagging the choice here since it's
+the one piece of new copy this phase introduced.
+
+**Implemented:**
+- New primary CTA "Değiştirdim, tekrar bak" replaces "Sonucu Paylaş" as the
+  dominant `BUTTON.primary` on a completed single result (per
+  `docs/PRODUCT_VISION.md` Principle P4); Paylaş and Başka Bir Kombin Dene
+  both demoted to `BUTTON.secondary`, so exactly one primary CTA remains
+  per screen.
+- Clicking it freezes the current result as BEFORE (`improvement` state in
+  `src/App.jsx`) and re-enters the **existing** single-photo upload +
+  analyze path unchanged to collect and score an AFTER photo — same
+  `analyze()`, same `runAnalysis()`, same Worker endpoint, no new AI call
+  type. `occasion` is simply never touched by the improvement handlers, so
+  it's reused for AFTER unless the user changes the OccasionPicker
+  themselves.
+- A minimal "Önce: X/100" / "İptal" affordance appears while collecting the
+  AFTER photo; the history strip and the "Hangisini Giyeyim?" compare-entry
+  link are suppressed during this sub-flow so the user isn't invited to
+  abandon the comparison context mid-loop.
+- New `ImprovementResult` component renders BEFORE/AFTER photos, "ÖNCE x →
+  SONRA y", the signed delta, and the state text — reading `before.puan`/
+  `after.puan` directly off the two canonical Worker responses already in
+  React state; nothing is recalculated, re-validated, or sent to a server a
+  second time for this comparison.
+- No share card for this screen (explicitly deferred — the Glow-up Card in
+  `docs/UX_CONTRACT.md` is a later phase). No new photo storage: both
+  images are the same already-blurred, in-memory data URLs already used for
+  sharing elsewhere — nothing new touches the Worker or a server.
+
+**Test evidence:** `npm test` (37/37 — 32 prior + 5 new in
+`src/constants.test.js` covering positive/zero/negative delta and that
+`improvementDelta()` is pure/stateless across calls) and `npx vite build`.
+Visual QA used a temporary in-memory `runAnalysis` fixture (never
+committed — restored and diff-verified clean) driven through headless
+Chromium end-to-end: BEFORE result → CTA → AFTER photo collection → the
+rendered Before/After screen, in both light and dark mode, plus a
+negative-delta run confirming "Bir kez daha düşün." renders instead of any
+"improved" language when the score fell.
+
+**Status:** PASS
+
+**REAL_USER_VALIDATION:** NOT_TESTED
+
+**Recommended next phase:** Product P4 — Viral Sharing (not started;
+requires separate approval to begin, per the roadmap).
