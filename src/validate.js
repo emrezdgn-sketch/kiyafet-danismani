@@ -2,6 +2,11 @@ import { CRITERIA } from './constants.js';
 
 const CRITERIA_KEYS = CRITERIA.map((c) => c.key);
 
+// Must match the Worker's CONTRACT_VERSION (proxy/worker.js). The two are
+// not shared code — a single integer isn't worth cross-runtime plumbing —
+// but they must be bumped together (see docs/DECISIONS.md).
+const SUPPORTED_CONTRACT_VERSION = 1;
+
 // Defensive check only: "is this response safe enough for the UI to render?"
 // The Worker is the authority on what the score/normalization actually is —
 // this function must never recompute or correct a value, only reject
@@ -9,6 +14,9 @@ const CRITERIA_KEYS = CRITERIA.map((c) => c.key);
 export function assertSafeResponse(data) {
   if (!data || typeof data !== 'object') {
     throw new Error('Sunucudan geçersiz bir yanıt geldi.');
+  }
+  if (data.version !== SUPPORTED_CONTRACT_VERSION) {
+    throw new Error('Sunucu yanıtı desteklenmeyen bir sürümde. Lütfen sayfayı yenileyin.');
   }
   if (typeof data.genel_izlenim !== 'string' || !data.genel_izlenim.trim()) {
     throw new Error('Sunucu yanıtında genel değerlendirme eksik.');

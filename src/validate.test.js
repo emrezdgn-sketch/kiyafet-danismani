@@ -4,6 +4,7 @@ import { assertSafeResponse } from './validate.js';
 
 function canonicalResponse(overrides = {}) {
   return {
+    version: 1,
     genel_izlenim: 'Kombin genel olarak dengeli.',
     puan: 70,
     kriterler: {
@@ -19,8 +20,25 @@ function canonicalResponse(overrides = {}) {
   };
 }
 
-test('assertSafeResponse accepts a valid canonical response from the Worker', () => {
+test('assertSafeResponse accepts a valid version 1 canonical response from the Worker', () => {
   assert.doesNotThrow(() => assertSafeResponse(canonicalResponse()));
+});
+
+test('assertSafeResponse rejects a response with a missing contract version', () => {
+  const data = canonicalResponse();
+  delete data.version;
+  assert.throws(() => assertSafeResponse(data), /sürüm/);
+});
+
+test('assertSafeResponse rejects a response with an unsupported contract version', () => {
+  assert.throws(() => assertSafeResponse(canonicalResponse({ version: 2 })), /sürüm/);
+});
+
+test('assertSafeResponse never computes or alters the official score', () => {
+  const data = canonicalResponse({ puan: 84 });
+  const returnValue = assertSafeResponse(data);
+  assert.equal(returnValue, undefined);
+  assert.equal(data.puan, 84);
 });
 
 test('assertSafeResponse rejects a missing puan field', () => {

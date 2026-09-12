@@ -23,7 +23,7 @@ const CRITERIA_WEIGHTS = {
 };
 const CRITERIA_KEYS = Object.keys(CRITERIA_WEIGHTS);
 const VALID_GUVEN = ['yüksek', 'orta', 'düşük'];
-const SCORE_TOLERANCE = 3;
+const CONTRACT_VERSION = 1;
 
 const SYSTEM_PROMPT = `Eski usul, çok titiz ve kusur bulmakta asla çekinmeyen bir görgü öğretmeni / mürebbiyesin — Heidi çizgi filmindeki katı, disiplinli dadı karakterini düşün. Nezaket, düzen, özen ve intizama son derece önem verirsin. Gevşeklik, uyumsuzluk, özensizlik veya "olur böyle şeyler" tavrına asla göz yummazsın. Fotoğraftaki kişinin üzerindeki kombini bu titiz gözle değerlendir.
 
@@ -118,10 +118,6 @@ export function validateAndNormalize(raw) {
     throw new Error('Yanıtta "genel_izlenim" alanı eksik veya boş.');
   }
 
-  if (raw.puan == null || isNaN(Number(raw.puan))) {
-    throw new Error('Yanıtta "puan" alanı eksik veya sayısal değil.');
-  }
-
   if (!raw.kriterler || typeof raw.kriterler !== 'object') {
     throw new Error('Yanıtta "kriterler" alanı eksik.');
   }
@@ -141,12 +137,15 @@ export function validateAndNormalize(raw) {
     };
   }
 
-  const recalculated = Math.round(
+  // The official score is ALWAYS the weighted sum of validated criterion
+  // scores under this Worker-owned formula. The model's own top-level
+  // "puan" field is never read here — it is not part of the canonical
+  // score contract, so the official score is always reproducible from
+  // "kriterler" alone (required for Before/After deltas, A/B comparison,
+  // and historical tracking).
+  const puan = Math.round(
     CRITERIA_KEYS.reduce((sum, key) => sum + kriterler[key].puan * (CRITERIA_WEIGHTS[key] / 100), 0),
   );
-
-  const modelScore = clampScore(raw.puan);
-  const puan = Math.abs(modelScore - recalculated) > SCORE_TOLERANCE ? recalculated : modelScore;
 
   let guven = { seviye: 'orta', neden: '' };
   if (raw.guven && typeof raw.guven === 'object') {
@@ -161,6 +160,7 @@ export function validateAndNormalize(raw) {
   }
 
   return {
+    version: CONTRACT_VERSION,
     genel_izlenim: raw.genel_izlenim.trim(),
     puan,
     kriterler,

@@ -42,3 +42,46 @@ logic before it reached the user.
 
 **Tests:** `proxy/worker.test.js` and `src/validate.test.js`, run via
 `npm test` (Node's built-in test runner — no new dependency).
+
+## 2026-09-12 — Phase 4.2: Canonical score & contract lock
+
+**Rule:** The official `puan` is *always* the weighted sum of validated
+criterion scores under the Worker's `CRITERIA_WEIGHTS` formula. The model's
+own top-level `puan` field is never read as part of the canonical score —
+not "kept if close enough," not read at all. Every successful canonical
+response also carries an explicit `version: 1`.
+
+**Why:** Phase 4.1 fixed *where* validation happened but kept a tolerance
+rule from Phase 4 — the model's stated total was kept unless it deviated
+from the recalculated value by more than 3 points. That made the official
+score not strictly reproducible from `kriterler` alone, which upcoming
+product flows require exactly: Before/After deltas, A/B comparison,
+historical score tracking, and share cards showing score deltas all need
+`puan` to be a pure, deterministic function of the criterion scores — never
+a value the model could nudge.
+
+**What changed:**
+
+- `proxy/worker.js`: `validateAndNormalize()` no longer reads, validates, or
+  compares against `raw.puan` at all. The canonical `puan` is computed
+  solely from `kriterler` (after per-criterion clamping) and
+  `CRITERIA_WEIGHTS`. Removed `SCORE_TOLERANCE` and the deviation-correction
+  branch — there is nothing left to tolerate.
+- Added `CONTRACT_VERSION = 1`; every successful response now includes
+  `version: 1` alongside the existing Turkish field names (no fields
+  renamed).
+- `src/validate.js`: `assertSafeResponse()` now rejects any response whose
+  `version` isn't the frontend's `SUPPORTED_CONTRACT_VERSION` (currently
+  `1`), so an incompatible future contract fails safely instead of
+  rendering partially-understood data. Still defensive-only — no score
+  computation.
+- The model's system prompt still asks for a top-level `puan` (prompt
+  unchanged, per approval gates); it's simply never consumed. This also
+  makes the app resilient to the model someday omitting it.
+
+**Tests:** `proxy/worker.test.js` proves the canonical score is identical
+regardless of what the model claims (±1, ±3, or wildly off), even when
+`puan` is missing or non-numeric entirely, and that a clamped criterion
+value feeds the recalculation. `src/validate.test.js` proves the frontend
+accepts `version: 1`, rejects a missing/unsupported version, and never
+computes or mutates the score itself.
