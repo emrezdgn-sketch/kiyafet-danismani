@@ -266,3 +266,60 @@ headless Chromium's `navigator.canShare` takes)
 
 **Recommended next phase:** Product P5 — Retention (not started; requires
 separate approval to begin, per the roadmap).
+
+### 2026-09-12 — Product P5: Stil Yolculuğum (Retention) implemented
+
+**Decision — no storage expansion:** The stored history schema
+(`src/history.js`, `{id, score, blurb, thumb}`, written by `addHistoryEntry`
+in `src/App.jsx`) has never recorded per-criterion scores or which
+recommendations were shown. Two of the preferred retention insights —
+"strongest recurring criterion" and "most common recommendation" — are
+therefore not safely derivable from what's actually stored, and are **not
+implemented**. Expanding the stored shape to fabricate this data was judged
+not clearly necessary for the smallest useful retention layer: recent
+analyses, average score, highest score, and a simple trend are already
+fully derivable from the existing `score` field alone. `HISTORY_KEY` stays
+`'nasilOlmusumHistory:v1'` — no schema version bump, no migration needed.
+
+**Implemented:**
+- New `src/insights.js` — three pure, stateless helpers reading only the
+  existing `score` field: `averageScore`, `maxScore`, and `scoreTrend`
+  (compares the newer half of history against the older half; returns
+  `null` below 4 entries so a 1-2 point wobble is never reported as a
+  trend). All three fail safely (return `null`, never throw) on empty,
+  non-array, or malformed/legacy-shaped entries.
+- `src/components/HistoryStrip.jsx`: section label renamed from "Geçmiş
+  Kombinlerin" to **"Stil Yolculuğum"** (the exact name `docs/UX_CONTRACT.md`
+  already gave this future feature under "Retention Direction"). A single
+  quiet line — "Ortalama X · En yüksek Y · Son eğilim: yükselişte (+N)" —
+  appears above the existing thumbnail strip only when an average exists;
+  the trend segment only appears once `scoreTrend` has enough data. Reuses
+  the existing `formatDelta` helper from Product P3 so a downward trend
+  reads "düşüşte (-N)" plainly — never reframed as positive.
+- No chart, no streak/gamification, no dashboard card, no new visibility
+  condition: the block only ever renders where the old history strip
+  already did (`mode === 'single' && !photoA.rawImage && !improvement`),
+  so the core "Kombinini Göster" upload action stays the visually dominant
+  element on that screen, unchanged.
+- No new dependency, no account, no backend storage, no analytics vendor,
+  no user ID, no original-image storage — everything reads the same
+  `localStorage`-only history that already existed.
+
+**Test evidence:** `npm test` (54/54 — 42 prior + 12 new in
+`src/insights.test.js`: average/max normal + empty + malformed-entry
+cases, trend's up/down/flat classification and its "not enough data"
+floor, and a dedicated legacy-shaped-entry compatibility test) and
+`npx vite build`. Visual QA seeded `localStorage` directly with the real
+history schema (empty, 1 entry, 5 entries with an upward trend, 5 entries
+with a downward trend) and screenshotted via headless Chromium at mobile
+(390px) and desktop (1024px) widths in both light and dark mode — no
+temporary fixture or stub was needed this phase (`src/api.js` has zero
+diff), so nothing required reverting before commit.
+
+**Status:** PASS
+
+**REAL_RETENTION_EVIDENCE:** NOT_AVAILABLE
+
+**Recommended next phase:** Product P6 — Monetization Gate is evidence
+review only, not an implementation phase (`docs/PRODUCT_ROADMAP.md`); no
+further Product implementation phase is queued without new direction.

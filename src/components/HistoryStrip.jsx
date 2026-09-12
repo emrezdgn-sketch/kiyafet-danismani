@@ -1,4 +1,5 @@
-import { C, RADIUS, scoreTier } from '../constants.js';
+import { C, RADIUS, scoreTier, formatDelta } from '../constants.js';
+import { averageScore, maxScore, scoreTrend } from '../insights.js';
 
 function SectionLabel({ children }) {
   return (
@@ -8,12 +9,21 @@ function SectionLabel({ children }) {
   );
 }
 
+const TREND_LABEL = { up: 'yükselişte', down: 'düşüşte', flat: 'sabit' };
+
 export function HistoryStrip({ history, onClear }) {
   if (!history.length) return null;
+  const avg = averageScore(history);
+  const max = maxScore(history);
+  const trend = scoreTrend(history);
+  const trendText = trend
+    ? `${TREND_LABEL[trend.direction]}${trend.diff !== 0 ? ` (${formatDelta(trend.diff)})` : ''}`
+    : null;
+
   return (
     <div className="mb-9">
       <div className="flex items-center justify-between mb-3">
-        <SectionLabel>Geçmiş Kombinlerin</SectionLabel>
+        <SectionLabel>Stil Yolculuğum</SectionLabel>
         <button
           type="button"
           onClick={() => {
@@ -25,6 +35,11 @@ export function HistoryStrip({ history, onClear }) {
           Temizle
         </button>
       </div>
+      {avg != null && (
+        <p className="font-sans" style={{ fontSize: 12, color: C.textSecondary, marginBottom: 10 }}>
+          Ortalama {avg} · En yüksek {max}{trendText ? ` · Son eğilim: ${trendText}` : ''}
+        </p>
+      )}
       <div className="flex gap-3" style={{ overflowX: 'auto', paddingBottom: 4 }}>
         {history.map((h) => {
           const tier = scoreTier(h.score);
