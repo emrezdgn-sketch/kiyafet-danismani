@@ -1,6 +1,10 @@
 import { assertSafeResponse } from './validate.js';
 
-const API_PROXY_URL = import.meta.env.VITE_API_PROXY_URL || '';
+// Optional chaining on import.meta.env only matters when this module is
+// imported outside Vite (e.g. Node's test runner for compareVerdict, in
+// api.test.js) — Vite always provides a real env object at build time, so
+// this is a no-op there.
+const API_PROXY_URL = import.meta.env?.VITE_API_PROXY_URL || '';
 
 // The Worker is the canonical authority for parsing, validating, and scoring
 // the model's response. This client only sends the request and defensively

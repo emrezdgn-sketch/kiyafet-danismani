@@ -1,5 +1,5 @@
-import { RefreshCw } from 'lucide-react';
-import { C, RADIUS, BUTTON, improvementDelta } from '../constants.js';
+import { RefreshCw, Share2 } from 'lucide-react';
+import { C, RADIUS, BUTTON, improvementDelta, improvementStateText, formatDelta } from '../constants.js';
 
 function SectionLabel({ children }) {
   return (
@@ -13,15 +13,11 @@ function SectionLabel({ children }) {
 // improvement-loop comparison. Never recalculates a score — both puan
 // values come straight from the canonical Worker responses of the two
 // analyses; this component only computes their difference for display.
-export function ImprovementResult({ beforeResult, beforePhotoUrl, afterResult, afterPhotoUrl, onReset }) {
+export function ImprovementResult({ beforeResult, beforePhotoUrl, afterResult, afterPhotoUrl, onReset, onShare, sharing }) {
   const { before, after, delta, state } = improvementDelta(beforeResult.puan, afterResult.puan);
-  const deltaText = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '±0';
+  const deltaText = formatDelta(delta);
   const stateColor = state === 'positive' ? C.positive : state === 'negative' ? C.accent : C.textSecondary;
-  // "ŞİMDİ OLDU." is the approved Job 3 example copy (docs/PRODUCT_VISION.md).
-  // No approved example exists for a flat or worse result, so those two are
-  // plain, honest lines in the same restrained voice — never "improved"
-  // language when the score didn't improve.
-  const stateText = state === 'positive' ? 'ŞİMDİ OLDU.' : state === 'negative' ? 'Bir kez daha düşün.' : 'Değişen bir şey yok.';
+  const stateText = improvementStateText(state);
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,13 +56,24 @@ export function ImprovementResult({ beforeResult, beforePhotoUrl, afterResult, a
         </p>
       </div>
 
-      <button
-        onClick={onReset}
-        className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
-        style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.secondary() }}
-      >
-        <RefreshCw size={16} /> Başka Bir Kombin Dene
-      </button>
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={onShare}
+          disabled={sharing}
+          className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+          style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
+        >
+          <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Sonucu Paylaş'}
+        </button>
+
+        <button
+          onClick={onReset}
+          className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+          style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.secondary() }}
+        >
+          <RefreshCw size={16} /> Başka Bir Kombin Dene
+        </button>
+      </div>
     </div>
   );
 }

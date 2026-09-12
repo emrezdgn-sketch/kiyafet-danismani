@@ -124,6 +124,21 @@ export function improvementDelta(beforePuan, afterPuan) {
   return { before, after, delta, state };
 }
 
+// Shared between ImprovementResult.jsx and the Glow-up share card (Product
+// P4) so the two never drift: "ŞİMDİ OLDU." is the approved Job 3 example
+// copy (docs/PRODUCT_VISION.md); no approved line exists for a flat or
+// worse result, so those two stay plain and honest — never "improved"
+// language when the score didn't improve.
+export function improvementStateText(state) {
+  if (state === 'positive') return 'ŞİMDİ OLDU.';
+  if (state === 'negative') return 'Bir kez daha düşün.';
+  return 'Değişen bir şey yok.';
+}
+
+export function formatDelta(delta) {
+  return delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : '±0';
+}
+
 // Canvas-rendered share card can't read CSS custom properties, so these are
 // literal hex values — must be kept in sync with the light-mode tokens in
 // src/index.css (see docs/VISUAL_SYSTEM.md).

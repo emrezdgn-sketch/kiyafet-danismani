@@ -3,7 +3,7 @@ import { ChevronRight, RefreshCw, Share2 } from 'lucide-react';
 import { C, RADIUS, BUTTON, CRITERIA, HISTORY_LIMIT, strongestCriterion } from './constants.js';
 import { runAnalysis, compareVerdict } from './api.js';
 import { loadHistory, saveHistory, makeThumbnail } from './history.js';
-import { buildShareCardBlob } from './share.js';
+import { buildShareCardBlob, buildBattleCardBlob, buildGlowUpCardBlob } from './share.js';
 import { usePhotoEditor } from './hooks/usePhotoEditor.js';
 import { ScoreHoop } from './components/ScoreHoop.jsx';
 import { CriterionRow } from './components/CriterionRow.jsx';
@@ -162,28 +162,31 @@ export default function OutfitStylist() {
     saveHistory([]);
   };
 
+  // Shared Web-Share-or-download fallback for every card type (Product P4).
+  // Preserves the exact existing behavior: Web Share API where supported,
+  // an <a download> link otherwise. Callers only need to build the blob.
+  const shareBlob = useCallback(async (blob, filename, shareText) => {
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Nasıl Olmuşum AI', text: shareText });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+  }, []);
+
   const shareResult = useCallback(async (safeImageToShare, resultToShare) => {
     if (!resultToShare || !safeImageToShare || sharing) return;
     setSharing(true);
     try {
       const blob = await buildShareCardBlob(safeImageToShare.dataUrl, resultToShare);
-      const file = new File([blob], 'nasil-olmusum.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Nasıl Olmuşum AI',
-          text: `Kombinim ${Math.round(resultToShare.puan)}/100 aldı.`,
-        });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'nasil-olmusum.png';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-      }
+      await shareBlob(blob, 'nasil-olmusum.png', `Kombinim ${Math.round(resultToShare.puan)}/100 aldı.`);
     } catch (err) {
       if (err && err.name !== 'AbortError') {
         setErrorMsg('Paylaşım kartı oluşturulamadı. Tekrar dener misin?');
@@ -191,7 +194,47 @@ export default function OutfitStylist() {
     } finally {
       setSharing(false);
     }
-  }, [sharing]);
+  }, [sharing, shareBlob]);
+
+  const shareBattle = useCallback(async () => {
+    if (!compareResult || sharing) return;
+    setSharing(true);
+    try {
+      const verdict = compareVerdict(compareResult.a, compareResult.b);
+      const blob = await buildBattleCardBlob(
+        (photoA.safeImage || photoA.rawImage).dataUrl,
+        (photoB.safeImage || photoB.rawImage).dataUrl,
+        compareResult.a, compareResult.b, verdict,
+      );
+      const shareText = verdict.winner ? `Bunu giy: ${verdict.winner}. Sen hangisini seçerdin?` : verdict.text;
+      await shareBlob(blob, 'hangisini-giyeyim.png', shareText);
+    } catch (err) {
+      if (err && err.name !== 'AbortError') {
+        setErrorMsg('Paylaşım kartı oluşturulamadı. Tekrar dener misin?');
+      }
+    } finally {
+      setSharing(false);
+    }
+  }, [sharing, shareBlob, compareResult, photoA.safeImage, photoA.rawImage, photoB.safeImage, photoB.rawImage]);
+
+  const shareGlowUp = useCallback(async () => {
+    if (!improvement || !result || sharing) return;
+    setSharing(true);
+    try {
+      const afterPhoto = photoA.safeImage || photoA.rawImage;
+      const blob = await buildGlowUpCardBlob(
+        improvement.beforePhotoUrl, afterPhoto.dataUrl,
+        improvement.beforeResult, result,
+      );
+      await shareBlob(blob, 'simdi-oldu.png', `Kombinim şimdi ${Math.round(result.puan)}/100.`);
+    } catch (err) {
+      if (err && err.name !== 'AbortError') {
+        setErrorMsg('Paylaşım kartı oluşturulamadı. Tekrar dener misin?');
+      }
+    } finally {
+      setSharing(false);
+    }
+  }, [sharing, shareBlob, improvement, result, photoA.safeImage, photoA.rawImage]);
 
   const noPhotoYet = !photoA.rawImage && !photoB.rawImage;
 
@@ -251,6 +294,8 @@ export default function OutfitStylist() {
               afterResult={result}
               afterPhotoUrl={(photoA.safeImage || photoA.rawImage).dataUrl}
               onReset={reset}
+              onShare={shareGlowUp}
+              sharing={sharing}
             />
           ) : (
             <div className="stylist-layout">
@@ -489,13 +534,22 @@ export default function OutfitStylist() {
                           onClick={() => shareResult(photo.safeImage, r)}
                           disabled={sharing}
                           className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
-                          style={{ fontSize: 13, padding: '11px 14px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
+                          style={{ fontSize: 13, padding: '11px 14px', borderRadius: RADIUS.medium, ...BUTTON.secondary(sharing) }}
                         >
                           <Share2 size={13} /> Paylaş
                         </button>
                       </div>
                     ))}
                   </div>
+
+                  <button
+                    onClick={shareBattle}
+                    disabled={sharing}
+                    className="press-btn w-full flex items-center justify-center gap-2 font-sans font-bold"
+                    style={{ fontSize: 14.5, padding: '15px 16px', borderRadius: RADIUS.medium, ...BUTTON.primary(sharing) }}
+                  >
+                    <Share2 size={16} /> {sharing ? 'Kart hazırlanıyor…' : 'Karşılaştırmayı Paylaş'}
+                  </button>
 
                   <button
                     onClick={resetCompare}

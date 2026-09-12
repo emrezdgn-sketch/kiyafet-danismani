@@ -182,3 +182,87 @@ negative-delta run confirming "Bir kez daha düşün." renders instead of any
 
 **Recommended next phase:** Product P4 — Viral Sharing (not started;
 requires separate approval to begin, per the roadmap).
+
+### 2026-09-12 — Product P4: Viral Sharing implemented
+
+**Decision — button hierarchy on screens that gained a second share action:**
+Adding a whole-comparison "Karşılaştırmayı Paylaş" (Battle Card) button to
+the compare-result screen created a second `BUTTON.primary` next to the two
+existing per-side "Paylaş" buttons, which `docs/VISUAL_SYSTEM.md` forbids
+("never two primaries in the same decision moment"). Resolved by demoting
+the two per-side share buttons to `BUTTON.secondary` and making the new
+whole-comparison share the single primary — sharing the comparison itself
+is the higher-value acquisition surface this phase exists to add, and the
+per-side score-card share remains available, just visually subordinate.
+The same question didn't arise on `ImprovementResult` (no prior share
+button existed there) or the single result (already resolved in Product
+P3: "Değiştirdim, tekrar bak" primary, "Sonucu Paylaş" secondary).
+
+**Decision — `import.meta.env` compatibility fix:** `compareVerdict()` (the
+pure function the Battle Card's winner text depends on) lives in
+`src/api.js`, which reads `import.meta.env.VITE_API_PROXY_URL` at module
+scope — a Vite-only global that throws under Node's test runner before the
+module can even be imported. Changed it to `import.meta.env?.VITE_API_PROXY_URL`
+(optional chaining). This is a no-op under Vite (which always provides a
+real `env` object) and was the smallest change that let `src/api.test.js`
+import and test `compareVerdict()` directly with the existing zero-dependency
+test setup, rather than duplicating or re-implementing the function
+elsewhere just to make it testable.
+
+**Implemented:**
+- `src/share.js` restructured around shared helpers (`loadImage`,
+  `drawCoverImage`, `wrapLines`, `renderCard`, `drawFooter`) and three card
+  builders: `buildShareCardBlob` (Score Card, existing function enhanced —
+  branding line moved into a shared footer used by all three cards, and a
+  "Sen kaç verirdin?" prompt added under the verdict), `buildBattleCardBlob`
+  (new — two photos, both canonical scores, `Bunu giy: <winner>` or the
+  existing tie text from `compareVerdict()`, "Sen hangisini seçerdin?"),
+  and `buildGlowUpCardBlob` (new — BEFORE/AFTER photos, "ÖNCE x → SONRA y",
+  the signed delta and state text via the same `improvementDelta` /
+  `improvementStateText` / `formatDelta` helpers `ImprovementResult.jsx`
+  uses, so the shared card can never say something different from the UI).
+  No card recalculates a score or applies a new threshold — every number
+  drawn is a canonical `puan` (or their existing difference) already in
+  React state.
+- `src/App.jsx`: the three separate Web-Share-or-download implementations
+  collapsed into one `shareBlob(blob, filename, shareText)` helper reused
+  by `shareResult`, the new `shareBattle`, and the new `shareGlowUp` — same
+  exact fallback behavior (Web Share API where `navigator.canShare`
+  supports it, an `<a download>` link otherwise) preserved verbatim, now
+  written once. Added a "Karşılaştırmayı Paylaş" primary button to the
+  compare-result screen and a "Sonucu Paylaş" primary button to
+  `ImprovementResult` (previously no share action existed there at all).
+- No new photo storage, no tracking pixel, no analytics vendor, no user ID,
+  no hidden metadata exposed: every card is built client-side from the same
+  already-blurred, in-memory data URLs already used for the existing Score
+  Card, and the Worker is not involved in generating or receiving any of
+  this.
+
+**Test evidence:** `npm test` (42/42 — 37 prior + 5 new: `formatDelta` and
+`improvementStateText` in `src/constants.test.js`, and `compareVerdict`'s
+three outcomes — A wins, B wins, tie — in the new `src/api.test.js`) and
+`npx vite build`. Visual QA used a temporary in-memory `runAnalysis`
+fixture (never committed — restored and diff-verified clean, leaving only
+the one-line `import.meta.env?.` fix in `src/api.js`) driven through
+headless Chromium: all three card types were actually generated end-to-end
+(triggering each real share button, intercepting the blob the fallback path
+produces via `URL.createObjectURL`, and saving it as a PNG) and visually
+inspected — mobile layout, long-text wrapping, Turkish character rendering,
+and the fallback path all confirmed directly from the generated pixels, not
+inferred from code reading. A duplicate branding line was found this way on
+the Score Card (old inline branding plus the new shared footer) and fixed
+before commit. Compare-result and ImprovementResult dark-mode source UI
+were also screenshotted, confirming exactly one primary button per screen
+and legible `onAccent` contrast on both new buttons.
+
+**Status:** PASS
+
+**REAL_SHARE_FLOW:** NOT_TESTED (headless Chromium has no real share
+target; the Web Share branch itself was not exercised on a device that
+supports it — only the fallback download path was, since that's the path
+headless Chromium's `navigator.canShare` takes)
+
+**REAL_USER_VALIDATION:** NOT_TESTED
+
+**Recommended next phase:** Product P5 — Retention (not started; requires
+separate approval to begin, per the roadmap).

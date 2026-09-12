@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { improvementDelta } from './constants.js';
+import { improvementDelta, improvementStateText, formatDelta } from './constants.js';
 
 test('improvementDelta reports a positive improvement state', () => {
   const result = improvementDelta(72, 86);
@@ -36,4 +36,21 @@ test('improvementDelta is pure: consecutive calls with different inputs never le
   assert.deepEqual(first, third);
   assert.notDeepEqual(first, second);
   assert.equal(second.state, 'neutral');
+});
+
+// Product P4 (Glow-up share card): improvementStateText and formatDelta are
+// shared verbatim between ImprovementResult.jsx and src/share.js so the UI
+// and the shared card can never say something different from each other.
+
+test('improvementStateText never forces "improved" language for a negative state', () => {
+  assert.equal(improvementStateText('positive'), 'ŞİMDİ OLDU.');
+  assert.equal(improvementStateText('neutral'), 'Değişen bir şey yok.');
+  assert.equal(improvementStateText('negative'), 'Bir kez daha düşün.');
+  assert.doesNotMatch(improvementStateText('negative'), /oldu|iyi|başar/i);
+});
+
+test('formatDelta signs positive and negative deltas and marks zero explicitly', () => {
+  assert.equal(formatDelta(14), '+14');
+  assert.equal(formatDelta(-15), '-15');
+  assert.equal(formatDelta(0), '±0');
 });
