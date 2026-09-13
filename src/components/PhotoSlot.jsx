@@ -88,7 +88,12 @@ export function PhotoSlot({ photo, compact, locked }) {
       <div
         ref={photo.photoRef}
         className={compact ? 'relative overflow-hidden select-none mb-3' : 'relative overflow-hidden select-none mb-5'}
-        style={{ borderRadius: RADIUS.large, boxShadow: SHADOW.soft, touchAction: (photo.faceBlurEnabled && !locked) ? 'none' : 'auto' }}
+        style={{
+          borderRadius: RADIUS.large,
+          boxShadow: SHADOW.soft,
+          touchAction: (photo.faceBlurEnabled && !locked) ? 'none' : 'auto',
+          background: compact ? C.surfaceSubtle : undefined,
+        }}
         onMouseMove={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragMove : undefined}
         onMouseUp={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
         onMouseLeave={(photo.faceBlurEnabled && !locked) ? photo.onHandleDragEnd : undefined}
@@ -98,7 +103,7 @@ export function PhotoSlot({ photo, compact, locked }) {
         <img
           src={(photo.safeImage || photo.rawImage).dataUrl}
           alt="Yüklenen kombin (yüz bulanıklaştırılmış önizleme)"
-          className={compact ? 'w-full object-cover block' : 'w-full object-cover block stylist-photo-img'}
+          className={compact ? 'w-full object-contain block' : 'w-full object-cover block stylist-photo-img'}
           style={{ opacity: photo.blurring ? 0.6 : 1, maxHeight: compact ? 360 : undefined }}
           draggable={false}
         />
