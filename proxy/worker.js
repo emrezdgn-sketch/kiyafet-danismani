@@ -1,4 +1,12 @@
 const ALLOWED_ORIGIN = 'https://danismanik.pages.dev';
+// Cloudflare Pages gives every preview deploy (a branch push or PR) its own
+// random subdomain, e.g. https://07b463fc.danismanik.pages.dev — anchored so
+// it only ever matches that one extra subdomain level under our own domain.
+const PREVIEW_ORIGIN_PATTERN = /^https:\/\/[a-z0-9-]+\.danismanik\.pages\.dev$/;
+
+export function isAllowedOrigin(origin) {
+  return origin === ALLOWED_ORIGIN || PREVIEW_ORIGIN_PATTERN.test(origin);
+}
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 2400;
@@ -78,7 +86,7 @@ function buildCorsHeaders(origin) {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
   };
-  if (origin === ALLOWED_ORIGIN) {
+  if (isAllowedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
   }
   return headers;

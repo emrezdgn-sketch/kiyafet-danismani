@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractJSON, validateAndNormalize } from './worker.js';
+import { extractJSON, validateAndNormalize, isAllowedOrigin } from './worker.js';
 
 // Weights: color_palette 30, style_cohesion 25, fit_and_silhouette 20,
 // seasonal_suitability 15, accessories 10.
@@ -157,4 +157,28 @@ test('validateAndNormalize defaults oneriler to an empty array when missing', ()
   const raw = validRaw({ oneriler: undefined });
   const result = validateAndNormalize(raw);
   assert.deepEqual(result.oneriler, []);
+});
+
+test('isAllowedOrigin accepts the production origin', () => {
+  assert.equal(isAllowedOrigin('https://danismanik.pages.dev'), true);
+});
+
+test('isAllowedOrigin accepts a Cloudflare Pages preview subdomain', () => {
+  assert.equal(isAllowedOrigin('https://07b463fc.danismanik.pages.dev'), true);
+});
+
+test('isAllowedOrigin rejects an unrelated origin', () => {
+  assert.equal(isAllowedOrigin('https://evil.example.com'), false);
+});
+
+test('isAllowedOrigin rejects a lookalike domain that only ends with our domain', () => {
+  assert.equal(isAllowedOrigin('https://danismanik.pages.dev.evil.com'), false);
+});
+
+test('isAllowedOrigin rejects a preview subdomain over plain http', () => {
+  assert.equal(isAllowedOrigin('http://07b463fc.danismanik.pages.dev'), false);
+});
+
+test('isAllowedOrigin rejects an empty or missing origin', () => {
+  assert.equal(isAllowedOrigin(''), false);
 });
