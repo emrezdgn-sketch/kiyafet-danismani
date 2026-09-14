@@ -184,7 +184,7 @@ export function PhotoSlot({ photo, compact, locked }) {
       </div>
 
       {!locked && (
-        <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans'} style={{ fontSize: compact ? 12 : 13, color: C.textSecondary, fontWeight: 500 }}>
+        <label className={compact ? 'flex items-center gap-2 mb-2 font-sans' : 'flex items-center gap-2.5 mb-6 font-sans stylist-blur-label'} style={{ fontSize: compact ? 12 : 13, color: C.textSecondary, fontWeight: 500 }}>
           <input
             type="checkbox"
             checked={photo.faceBlurEnabled}
