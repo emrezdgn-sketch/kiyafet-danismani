@@ -36,6 +36,17 @@ function drawCoverImage(ctx, img, dx, dy, dw, dh) {
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 
+// Glow-up before/after photos must show the full frame (no crop), unlike the
+// Score/Battle cards' cover-crop — so it gets its own contain-fit helper.
+function drawContainImage(ctx, img, dx, dy, dw, dh) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const scale = Math.min(dw / iw, dh / ih);
+  const w = iw * scale, h = ih * scale;
+  const x = dx + (dw - w) / 2;
+  const y = dy + (dh - h) / 2;
+  ctx.drawImage(img, 0, 0, iw, ih, x, y, w, h);
+}
+
 function wrapLines(ctx, text, maxWidth, maxLines) {
   const words = text.split(/\s+/);
   const lines = [];
@@ -229,8 +240,8 @@ function drawGlowUpCard(ctx, beforeImg, afterImg, beforeResult, afterResult) {
   ctx.fillStyle = SHARE_PALETTE.accent;
   ctx.fillText('SONRA', HALF_W + GUTTER + 64, 40);
 
-  drawCoverImage(ctx, beforeImg, 0, GLOWUP_HEADER_H, HALF_W, GLOWUP_PHOTO_H);
-  drawCoverImage(ctx, afterImg, HALF_W + GUTTER, GLOWUP_HEADER_H, HALF_W, GLOWUP_PHOTO_H);
+  drawContainImage(ctx, beforeImg, 0, GLOWUP_HEADER_H, HALF_W, GLOWUP_PHOTO_H);
+  drawContainImage(ctx, afterImg, HALF_W + GUTTER, GLOWUP_HEADER_H, HALF_W, GLOWUP_PHOTO_H);
 
   const { before, after, delta, state } = improvementDelta(beforeResult.puan, afterResult.puan);
   const tColor = stateColor(state);
