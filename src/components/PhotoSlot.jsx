@@ -87,7 +87,7 @@ export function PhotoSlot({ photo, compact, locked }) {
     <div>
       <div
         ref={photo.photoRef}
-        className={compact ? 'relative overflow-hidden select-none mb-3' : 'relative overflow-hidden select-none mb-5'}
+        className={compact ? 'relative overflow-hidden select-none mb-3' : 'relative overflow-hidden select-none mb-5 stylist-photo-frame'}
         style={{
           borderRadius: RADIUS.large,
           boxShadow: SHADOW.soft,

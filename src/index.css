@@ -111,7 +111,8 @@ html, body {
 .stylist-layout { display: flex; flex-direction: column; gap: 28px; }
 .stylist-photo-col { width: 100%; }
 .stylist-results-col { width: 100%; }
-.stylist-photo-img { max-height: min(380px, 50vh); object-fit: contain; }
+.stylist-photo-frame { width: fit-content; max-width: 100%; margin-inline: auto; }
+.stylist-photo-img { width: auto; height: auto; max-width: 100%; max-height: min(380px, 50vh); object-fit: contain; }
 .stylist-blur-label { flex-wrap: wrap; row-gap: 4px; }
 
 @media (min-width: 760px) {
@@ -119,7 +120,8 @@ html, body {
   .stylist-layout { flex-direction: row; align-items: flex-start; gap: 44px; }
   .stylist-photo-col { width: 400px; flex-shrink: 0; position: sticky; top: 28px; }
   .stylist-results-col { flex: 1; min-width: 0; }
-  .stylist-photo-img { max-height: 620px; object-fit: cover; }
+  .stylist-photo-frame { width: 100%; margin-inline: 0; }
+  .stylist-photo-img { width: 100%; height: auto; max-width: none; max-height: 620px; object-fit: cover; }
   .stylist-blur-label { flex-wrap: nowrap; }
 }
 
